@@ -23,6 +23,4 @@ jobs:
           cppcheck \
             --enable=warning,performance,portability \
             --suppress=missingIncludeSystem \
-            --output-file=rapport-cppcheck.txt \
-            rpg-source/ || true
-          cat rapport-cppcheck.txt
+            rpg-source/
