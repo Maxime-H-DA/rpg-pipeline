@@ -1,4 +1,6 @@
-# Pipeline de RPG Alterdune
+![Pipeline](https://github.com/Maxime-H-DA/rpg-pipeline/actions/workflows/pipeline.yml/badge.svg)
+
+# Pipeline du RPG Alterdune
 
 Ce repo contient le pipeline de sécurité que j'ai mis en place autour de mon projet RPG en C++.
 
