@@ -24,3 +24,6 @@ jobs:
             --enable=warning,performance,portability \
             --suppress=missingIncludeSystem \
             rpg-source/
+
+      - name: Construction de l'image Docker
+        run: docker build -t rpg-alterdune .
