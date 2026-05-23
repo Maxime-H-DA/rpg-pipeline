@@ -14,3 +14,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+
+      - name: Installation de Cppcheck
+        run: sudo apt-get install -y cppcheck
+
+      - name: Analyse du code C++
+        run: cppcheck --enable=all --error-exitcode=1 rpg-source/
