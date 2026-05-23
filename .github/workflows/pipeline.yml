@@ -27,3 +27,10 @@ jobs:
 
       - name: Construction de l'image Docker
         run: docker build -t rpg-alterdune .
+
+      - name: Scan de vulnérabilités de l'image Docker
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: rpg-alterdune
+          severity: HIGH,CRITICAL
+          exit-code: 1
