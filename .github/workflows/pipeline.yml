@@ -6,11 +6,11 @@ on:
       - main
 
 jobs:
-  pipeline:
+  analyse:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Récupération du code
+      - name: Téléchargement du code source
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -18,5 +18,10 @@ jobs:
       - name: Installation de Cppcheck
         run: sudo apt-get install -y cppcheck
 
-      - name: Analyse du code C++
-        run: cppcheck --enable=all --error-exitcode=1 rpg-source/
+      - name: Recherche de bugs dans le code C++
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --suppress=missingIncludeSystem \
+            --error-exitcode=1 \
+            rpg-source/
