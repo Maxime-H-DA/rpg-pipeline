@@ -1,0 +1,16 @@
+name: RPG
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
