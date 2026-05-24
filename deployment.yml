@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rpg-alterdune
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rpg-alterdune
+  template:
+    metadata:
+      labels:
+        app: rpg-alterdune
+    spec:
+      containers:
+        - name: rpg-alterdune
+          image: rpg-alterdune
+          imagePullPolicy: Never
