@@ -21,6 +21,15 @@ L'image Docker est analysée pour détecter des failles connues. Le premier scan
 
 Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
 
+Pour tester l'API en local sans impacter la version en ligne — utile pour tester des modifications de code avant de les déployer :
+
+```bash
+docker build -t rpg-api -f rpg-api/Dockerfile .
+docker run -d -p 5000:5000 -e "API_SECRET_KEY=ta_clef" -e "ADMIN_USERNAME=ton_user" -e "ADMIN_PASSWORD=ton_mdp" -v rpg-data:/app/data rpg-api
+```
+
+Note : les modifications faites en local ne sont pas synchronisées avec la version en ligne.
+
 ## Synchronisation avec le jeu
 
 Pour jouer avec les données en ligne plutôt que les données locales :
@@ -33,14 +42,12 @@ Le script récupère les monstres depuis l'API et met à jour le fichier `monste
 
 ## Protection locale contre les fuites de secrets
 
-Un hook pre-commit Gitleaks est configuré dans `.pre-commit-config.yaml`. Pour l'activer sur ton PC :
+Un hook pre-commit Gitleaks est configuré dans `.pre-commit-config.yaml`. Pour l'activer :
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
-
-Après ça, Gitleaks vérifie automatiquement chaque commit avant qu'il parte sur GitHub.
 
 ## Outils utilisés
 
