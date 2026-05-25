@@ -9,7 +9,7 @@ L'idée était de prendre un vrai projet et lui appliquer des pratiques qu'on re
 ## Ce qui se passe à chaque push
 
 **Analyse du code avec Cppcheck**
-Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation. (même si le style de code est parfois remis en quesiton)
+Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation. (même si le style de code est parfois remis en question)
 
 **Compilation dans Docker**
 Le jeu est compilé dans un environnement isolé. N'importe qui peut le lancer sans avoir à installer quoi que ce soit sur sa machine.
@@ -17,9 +17,13 @@ Le jeu est compilé dans un environnement isolé. N'importe qui peut le lancer s
 **Scan de sécurité avec Trivy**
 L'image Docker est analysée pour détecter des failles connues. Le premier scan a révélé une faille critique sur l'image de base, j'ai migré vers Alpine Linux et le scan suivant était propre.
 
+## L'API du bestiaire
+
+J'ai aussi développé une API Flask autour des données du jeu. Elle permet de consulter et gérer les monstres depuis un navigateur, avec un système de login et des tokens JWT pour protéger les modifications.
+
 ## Outils utilisés
 
-GitHub Actions, Docker, Cppcheck, Trivy
+GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT
 
 ## Projet source
 

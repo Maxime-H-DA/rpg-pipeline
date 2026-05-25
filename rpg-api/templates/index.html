@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bestiaire RPG</title>
+</head>
+<body>
+
+    <h1>Bestiaire RPG Alterdune</h1>
+
+    <div id="message"></div>
+
+    <div id="section-login">
+        <h2>Connexion Admin</h2>
+        <input type="text" id="username" placeholder="Identifiant" />
+        <input type="password" id="password" placeholder="Mot de passe" />
+        <button onclick="login()">Se connecter</button>
+    </div>
+
+    <div id="section-admin" style="display:none">
+        <h2>Ajouter un monstre</h2>
+        <input type="text" id="categorie" placeholder="Categorie" />
+        <input type="text" id="nom" placeholder="Nom" />
+        <input type="text" id="hp" placeholder="HP" />
+        <input type="text" id="atk" placeholder="ATK" />
+        <input type="text" id="def" placeholder="DEF" />
+        <input type="text" id="mercy" placeholder="Mercy" />
+        <button onclick="ajouterMonstre()">Ajouter</button>
+        <button onclick="deconnexion()">Se deconnecter</button>
+    </div>
+
+    <h2>Liste des monstres</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Categorie</th>
+                <th>HP</th>
+                <th>ATK</th>
+                <th>DEF</th>
+                <th>Mercy</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="liste-monstres"></tbody>
+    </table>
+
+    <script>
+        let token = null;
+
+        function afficherMessage(texte) {
+            document.getElementById("message").textContent = texte;
+            setTimeout(() => document.getElementById("message").textContent = "", 3000);
+        }
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const reponse = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await reponse.json();
+
+            if (reponse.ok) {
+                token = data.token;
+                document.getElementById("section-login").style.display = "none";
+                document.getElementById("section-admin").style.display = "block";
+                afficherMessage("Connecte en tant qu'admin");
+                chargerMonstres();
+            } else {
+                afficherMessage("Identifiants incorrects");
+            }
+        }
+
+        function deconnexion() {
+            token = null;
+            document.getElementById("section-login").style.display = "block";
+            document.getElementById("section-admin").style.display = "none";
+            chargerMonstres();
+        }
+
+        async function chargerMonstres() {
+            const reponse = await fetch("/monstres");
+            const monstres = await reponse.json();
+            const tbody = document.getElementById("liste-monstres");
+            tbody.innerHTML = "";
+
+            for (const m of monstres) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${m.nom}</td>
+                    <td>${m.categorie}</td>
+                    <td>${m.hp}</td>
+                    <td>${m.atk}</td>
+                    <td>${m.def}</td>
+                    <td>${m.mercy}</td>
+                    <td>${token ? `<button onclick="supprimerMonstre('${m.nom}')">Supprimer</button>` : ""}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        async function supprimerMonstre(nom) {
+            const reponse = await fetch("/monstres/" + nom, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const data = await reponse.json();
+            afficherMessage(data.message || data.erreur);
+            chargerMonstres();
+        }
+
+        async function ajouterMonstre() {
+            const monstre = {
+                categorie: document.getElementById("categorie").value,
+                nom: document.getElementById("nom").value,
+                hp: document.getElementById("hp").value,
+                atk: document.getElementById("atk").value,
+                def: document.getElementById("def").value,
+                mercy: document.getElementById("mercy").value
+            };
+
+            const reponse = await fetch("/monstres", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify(monstre)
+            });
+
+            const data = await reponse.json();
+            afficherMessage(data.message || data.erreur);
+            chargerMonstres();
+        }
+
+        chargerMonstres();
+    </script>
+
+</body>
+</html>
