@@ -6,9 +6,8 @@ on:
       - main
 
 jobs:
-  analyse:
+  analyse-code:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Téléchargement du code source
         uses: actions/checkout@v4
@@ -30,6 +29,14 @@ jobs:
             --suppress=missingIncludeSystem \
             rpg-source/
 
+  scan-jeu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
       - name: Construction de l'image du jeu
         run: docker build -t rpg-alterdune .
 
@@ -39,6 +46,14 @@ jobs:
           image-ref: rpg-alterdune
           severity: HIGH,CRITICAL
           exit-code: 0
+
+  scan-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Construction de l'image de l'API
         run: docker build -t rpg-api -f rpg-api/Dockerfile .
