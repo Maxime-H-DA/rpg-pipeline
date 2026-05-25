@@ -25,7 +25,7 @@ Pour tester l'API en local sans impacter la version en ligne — utile pour test
 
 ```bash
 docker build -t rpg-api -f rpg-api/Dockerfile .
-docker run -d -p 5000:5000 -e "API_SECRET_KEY=ta_clef" -e "ADMIN_USERNAME=ton_user" -e "ADMIN_PASSWORD=ton_mdp" -v rpg-data:/app/data rpg-api
+docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 ```
 
 Note : les modifications faites en local ne sont pas synchronisées avec la version en ligne.
@@ -46,7 +46,7 @@ GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT
 
 ## Administration
 
-- Dashboard Render : [Gérer le serveur](https://dashboard.render.com/web/srv-d8a0udp9rddc739m5itg)
+- Dashboard Render : [Gérer le serveur](https://dashboard.render.com/web/srv-d8ab07jeo5us739hn4d0)
 
 ## Projet source
 
