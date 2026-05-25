@@ -9,7 +9,7 @@ app = Flask(__name__)
 TOKEN_SECRET = os.environ.get("API_SECRET_KEY", "changeme")
 ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "password")
-DATABASE = "/app/data/database.db"
+DATABASE = "database.db"
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
