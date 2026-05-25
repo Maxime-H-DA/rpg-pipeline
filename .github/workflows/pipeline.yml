@@ -15,6 +15,11 @@ jobs:
         with:
           submodules: true
 
+      - name: Détection de secrets dans le code
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Installation de Cppcheck
         run: sudo apt-get install -y cppcheck
 
@@ -25,17 +30,22 @@ jobs:
             --suppress=missingIncludeSystem \
             rpg-source/
 
-      - name: Construction de l'image Docker
+      - name: Construction de l'image du jeu
         run: docker build -t rpg-alterdune .
 
-      - name: Scan de vulnérabilités de l'image Docker
+      - name: Scan de vulnérabilités du jeu
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: rpg-alterdune
           severity: HIGH,CRITICAL
           exit-code: 0
 
-      - name: Détection de secrets dans le code
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construction de l'image de l'API
+        run: docker build -t rpg-api -f rpg-api/Dockerfile .
+
+      - name: Scan de vulnérabilités de l'API
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: rpg-api
+          severity: HIGH,CRITICAL
+          exit-code: 0
