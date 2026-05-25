@@ -9,7 +9,7 @@ L'idée était de prendre un vrai projet et lui appliquer des pratiques qu'on re
 ## Ce qui se passe à chaque push
 
 **Analyse du code avec Cppcheck**
-Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation. (même si le style de code est parfois remis en question)
+Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation.
 
 **Compilation dans Docker**
 Le jeu est compilé dans un environnement isolé. N'importe qui peut le lancer sans avoir à installer quoi que ce soit sur sa machine.
@@ -19,7 +19,17 @@ L'image Docker est analysée pour détecter des failles connues. Le premier scan
 
 ## L'API du bestiaire
 
-J'ai aussi développé une API Flask autour des données du jeu. Elle permet de consulter et gérer les monstres depuis un navigateur, avec un système de login et des tokens JWT pour protéger les modifications.
+Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
+
+## Synchronisation avec le jeu
+
+Pour jouer avec les données en ligne plutôt que les données locales :
+
+```bash
+py play.py
+```
+
+Le script récupère les monstres depuis l'API et met à jour le fichier `monsters.csv` utilisé par le jeu.
 
 ## Outils utilisés
 
