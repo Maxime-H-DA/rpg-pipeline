@@ -30,8 +30,9 @@ try:
     else:
         with open(CSV_PATH, "w", encoding="utf-8") as f:
             for m in monstres_api:
-                f.write(f"{m['categorie']};{m['nom']};{m['hp']};{m['atk']};{m['def']};{m['mercy']}\n")
-        
+                actions = f"{m.get('act1', '-')};{m.get('act2', '-')};{m.get('act3', '-')};{m.get('act4', '-')}"
+                f.write(f"{m['categorie']};{m['nom']};{m['hp']};{m['atk']};{m['def']};{m['mercy']};{actions}\n")
+
         if ajoutes:
             print(f"{len(ajoutes)} monstre(s) ajoute(s) : {', '.join([m['nom'] for m in ajoutes])}")
         if supprimes:
