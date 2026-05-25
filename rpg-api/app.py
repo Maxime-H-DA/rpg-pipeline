@@ -18,14 +18,17 @@ ACTIONS_PAR_CATEGORIE = {
     "BOSS": 4
 }
 
+
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
     db_existe = os.path.exists(DATABASE)
     conn = get_db()
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS monstres (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,18 +52,38 @@ def init_db():
                 ligne = ligne.strip()
                 if not ligne:
                     continue
+
                 champs = ligne.split(";")
+
                 if len(champs) >= 6:
-                    act1 = champs[6] if len(champs) > 6 else "-"
-                    act2 = champs[7] if len(champs) > 7 else "-"
-                    act3 = champs[8] if len(champs) > 8 else "-"
-                    act4 = champs[9] if len(champs) > 9 else "-"
+                    if len(champs) > 6:
+                        act1 = champs[6]
+                    else:
+                        act1 = "-"
+
+                    if len(champs) > 7:
+                        act2 = champs[7]
+                    else:
+                        act2 = "-"
+
+                    if len(champs) > 8:
+                        act3 = champs[8]
+                    else:
+                        act3 = "-"
+
+                    if len(champs) > 9:
+                        act4 = champs[9]
+                    else:
+                        act4 = "-"
+
                     conn.execute(
                         "INSERT INTO monstres (categorie, nom, hp, atk, def, mercy, act1, act2, act3, act4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (champs[0], champs[1], champs[2], champs[3], champs[4], champs[5], act1, act2, act3, act4)
                     )
+
         conn.commit()
     conn.close()
+
 
 def verifier_token():
     auth = request.headers.get("Authorization")
@@ -68,7 +91,9 @@ def verifier_token():
         return False
     if not auth.startswith("Bearer "):
         return False
+
     token = auth.split(" ")[1]
+
     try:
         jwt.decode(token, TOKEN_SECRET, algorithms=["HS256"])
         return True
@@ -77,13 +102,16 @@ def verifier_token():
     except jwt.InvalidTokenError:
         return False
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 @app.route("/actions", methods=["GET"])
 def get_actions():
     return jsonify(ACTIONS_DISPONIBLES)
+
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -105,31 +133,42 @@ def login():
         TOKEN_SECRET,
         algorithm="HS256"
     )
+
     return jsonify({"token": token})
+
 
 @app.route("/monstres", methods=["GET"])
 def get_monstres():
     conn = get_db()
     monstres = conn.execute("SELECT * FROM monstres").fetchall()
     conn.close()
+
     resultat = []
     for m in monstres:
         resultat.append(dict(m))
+
     return jsonify(resultat)
+
 
 @app.route("/monstres/<nom>", methods=["GET"])
 def get_monstre(nom):
     conn = get_db()
-    monstre = conn.execute("SELECT * FROM monstres WHERE LOWER(nom) = LOWER(?)", (nom,)).fetchone()
+    monstre = conn.execute(
+        "SELECT * FROM monstres WHERE LOWER(nom) = LOWER(?)", (nom,)
+    ).fetchone()
     conn.close()
+
     if monstre is None:
         return jsonify({"erreur": "Monstre introuvable"}), 404
+
     return jsonify(dict(monstre))
+
 
 @app.route("/monstres", methods=["POST"])
 def ajouter_monstre():
     if not verifier_token():
         return jsonify({"erreur": "Non autorise"}), 401
+
     data = request.json
 
     champs_requis = ["categorie", "nom", "hp", "atk", "def", "mercy", "act1", "act2"]
@@ -151,8 +190,14 @@ def ajouter_monstre():
             return jsonify({"erreur": f"Le champ {champ} doit etre un nombre"}), 400
 
     nb_actions = ACTIONS_PAR_CATEGORIE[data["categorie"].upper()]
-    actions = [data.get(f"act{i+1}", "-") for i in range(4)]
-    actions_renseignees = [a for a in actions[:nb_actions] if a and a != "-"]
+    actions = []
+    for i in range(4):
+        actions.append(data.get(f"act{i+1}", "-"))
+
+    actions_renseignees = []
+    for a in actions[:nb_actions]:
+        if a and a != "-":
+            actions_renseignees.append(a)
 
     if len(actions_renseignees) != nb_actions:
         return jsonify({"erreur": f"Un {data['categorie']} doit avoir exactement {nb_actions} actions"}), 400
@@ -165,7 +210,11 @@ def ajouter_monstre():
             return jsonify({"erreur": f"Action {action} invalide"}), 400
 
     conn = get_db()
-    existant = conn.execute("SELECT * FROM monstres WHERE LOWER(nom) = LOWER(?)", (data["nom"],)).fetchone()
+
+    existant = conn.execute(
+        "SELECT * FROM monstres WHERE LOWER(nom) = LOWER(?)", (data["nom"],)
+    ).fetchone()
+
     if existant:
         conn.close()
         return jsonify({"erreur": f"{data['nom']} existe deja"}), 409
@@ -177,19 +226,27 @@ def ajouter_monstre():
     )
     conn.commit()
     conn.close()
+
     return jsonify({"message": f"{data['nom']} ajoute"}), 201
+
 
 @app.route("/monstres/<nom>", methods=["DELETE"])
 def supprimer_monstre(nom):
     if not verifier_token():
         return jsonify({"erreur": "Non autorise"}), 401
+
     conn = get_db()
-    resultat = conn.execute("DELETE FROM monstres WHERE LOWER(nom) = LOWER(?)", (nom,)).rowcount
+    resultat = conn.execute(
+        "DELETE FROM monstres WHERE LOWER(nom) = LOWER(?)", (nom,)
+    ).rowcount
     conn.commit()
     conn.close()
+
     if resultat == 0:
         return jsonify({"erreur": "Monstre introuvable"}), 404
+
     return jsonify({"message": f"{nom} supprime"})
+
 
 if __name__ == "__main__":
     init_db()
