@@ -19,12 +19,14 @@
 
     <div id="section-admin" style="display:none">
         <h2>Ajouter un monstre</h2>
+
         <select id="categorie" onchange="mettreAJourActions()">
             <option value="">-- Categorie --</option>
             <option value="NORMAL">NORMAL</option>
             <option value="MINIBOSS">MINIBOSS</option>
             <option value="BOSS">BOSS</option>
         </select>
+
         <input type="text" id="nom" placeholder="Nom" />
         <input type="text" id="hp" placeholder="HP" />
         <input type="text" id="atk" placeholder="ATK" />
@@ -59,8 +61,17 @@
 
     <script>
         let token = null;
-        const actionsDisponibles = ["JOKE", "COMPLIMENT", "DANCE", "PET", "DISCUSS", "OBSERVE", "INSULT", "THREATEN"];
-        const actionsParCategorie = { "NORMAL": 2, "MINIBOSS": 3, "BOSS": 4 };
+
+        const actionsDisponibles = [
+            "JOKE", "COMPLIMENT", "DANCE", "PET",
+            "DISCUSS", "OBSERVE", "INSULT", "THREATEN"
+        ];
+
+        const actionsParCategorie = {
+            "NORMAL": 2,
+            "MINIBOSS": 3,
+            "BOSS": 4
+        };
 
         function afficherMessage(texte) {
             document.getElementById("message").textContent = texte;
@@ -79,11 +90,13 @@
 
             section.style.display = "block";
             container.innerHTML = "";
+
             const nb = actionsParCategorie[categorie];
 
             for (let i = 1; i <= nb; i++) {
                 const select = document.createElement("select");
                 select.id = "act" + i;
+
                 const optionVide = document.createElement("option");
                 optionVide.value = "";
                 optionVide.textContent = "-- Action " + i + " --";
@@ -95,23 +108,26 @@
                     option.textContent = action;
                     select.appendChild(option);
                 }
+
                 container.appendChild(select);
                 container.appendChild(document.createTextNode(" "));
             }
 
-            if (categorie === "MINIBOSS") {
-                const hidden = document.createElement("input");
-                hidden.type = "hidden";
-                hidden.id = "act4";
-                hidden.value = "-";
-                container.appendChild(hidden);
-            }
             if (categorie === "NORMAL") {
                 const hidden3 = document.createElement("input");
                 hidden3.type = "hidden";
                 hidden3.id = "act3";
                 hidden3.value = "-";
                 container.appendChild(hidden3);
+
+                const hidden4 = document.createElement("input");
+                hidden4.type = "hidden";
+                hidden4.id = "act4";
+                hidden4.value = "-";
+                container.appendChild(hidden4);
+            }
+
+            if (categorie === "MINIBOSS") {
                 const hidden4 = document.createElement("input");
                 hidden4.type = "hidden";
                 hidden4.id = "act4";
@@ -123,12 +139,15 @@
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
+
             const reponse = await fetch("/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
             });
+
             const data = await reponse.json();
+
             if (reponse.ok) {
                 token = data.token;
                 document.getElementById("section-login").style.display = "none";
@@ -152,8 +171,12 @@
             const monstres = await reponse.json();
             const tbody = document.getElementById("liste-monstres");
             tbody.innerHTML = "";
+
             for (const m of monstres) {
-                const actions = [m.act1, m.act2, m.act3, m.act4].filter(a => a && a !== "-").join(", ");
+                const actions = [m.act1, m.act2, m.act3, m.act4]
+                    .filter(a => a && a !== "-")
+                    .join(", ");
+
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td>${m.nom}</td>
@@ -174,6 +197,7 @@
                 method: "DELETE",
                 headers: { "Authorization": "Bearer " + token }
             });
+
             const data = await reponse.json();
             afficherMessage(data.message || data.erreur);
             chargerMonstres();
@@ -214,6 +238,7 @@
                 },
                 body: JSON.stringify(monstre)
             });
+
             const data = await reponse.json();
             afficherMessage(data.message || data.erreur);
             chargerMonstres();
