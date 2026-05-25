@@ -35,6 +35,10 @@ Le script récupère les monstres depuis l'API et met à jour le fichier `monste
 
 GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT
 
+## Administration
+
+- Dashboard Render : [Gérer le serveur](https://dashboard.render.com/web/srv-d8a0udp9rddc739m5itg)
+
 ## Projet source
 
 Le code du jeu RPG : [projet-RPG-S6](https://github.com/Maxime-H-DA/projet-RPG-S6)
