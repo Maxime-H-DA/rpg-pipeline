@@ -40,18 +40,9 @@ py play.py
 
 Le script récupère les monstres depuis l'API et met à jour le fichier `monsters.csv` utilisé par le jeu.
 
-## Protection locale contre les fuites de secrets
-
-Un hook pre-commit Gitleaks est configuré dans `.pre-commit-config.yaml`. Pour l'activer :
-
-```bash
-pip install pre-commit
-pre-commit install
-```
-
 ## Outils utilisés
 
-GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT, pre-commit
+GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT
 
 ## Administration
 
