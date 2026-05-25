@@ -11,6 +11,13 @@ ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "password")
 DATABASE = "database.db"
 
+ACTIONS_DISPONIBLES = ["JOKE", "COMPLIMENT", "DANCE", "PET", "DISCUSS", "OBSERVE", "INSULT", "THREATEN"]
+ACTIONS_PAR_CATEGORIE = {
+    "NORMAL": 2,
+    "MINIBOSS": 3,
+    "BOSS": 4
+}
+
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -27,7 +34,11 @@ def init_db():
             hp TEXT,
             atk TEXT,
             def TEXT,
-            mercy TEXT
+            mercy TEXT,
+            act1 TEXT,
+            act2 TEXT,
+            act3 TEXT,
+            act4 TEXT
         )
     """)
     conn.commit()
@@ -40,9 +51,13 @@ def init_db():
                     continue
                 champs = ligne.split(";")
                 if len(champs) >= 6:
+                    act1 = champs[6] if len(champs) > 6 else "-"
+                    act2 = champs[7] if len(champs) > 7 else "-"
+                    act3 = champs[8] if len(champs) > 8 else "-"
+                    act4 = champs[9] if len(champs) > 9 else "-"
                     conn.execute(
-                        "INSERT INTO monstres (categorie, nom, hp, atk, def, mercy) VALUES (?, ?, ?, ?, ?, ?)",
-                        (champs[0], champs[1], champs[2], champs[3], champs[4], champs[5])
+                        "INSERT INTO monstres (categorie, nom, hp, atk, def, mercy, act1, act2, act3, act4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (champs[0], champs[1], champs[2], champs[3], champs[4], champs[5], act1, act2, act3, act4)
                     )
         conn.commit()
     conn.close()
@@ -66,6 +81,10 @@ def verifier_token():
 def index():
     return render_template("index.html")
 
+@app.route("/actions", methods=["GET"])
+def get_actions():
+    return jsonify(ACTIONS_DISPONIBLES)
+
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -81,12 +100,11 @@ def login():
     token = jwt.encode(
         {
             "username": username,
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+            "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)
         },
         TOKEN_SECRET,
         algorithm="HS256"
     )
-
     return jsonify({"token": token})
 
 @app.route("/monstres", methods=["GET"])
@@ -113,16 +131,49 @@ def ajouter_monstre():
     if not verifier_token():
         return jsonify({"erreur": "Non autorise"}), 401
     data = request.json
-    conn = get_db()
 
+    champs_requis = ["categorie", "nom", "hp", "atk", "def", "mercy", "act1", "act2"]
+    for champ in champs_requis:
+        if not data.get(champ):
+            return jsonify({"erreur": f"Le champ {champ} est manquant ou vide"}), 400
+
+    categories_valides = ["NORMAL", "MINIBOSS", "BOSS"]
+    if data["categorie"].upper() not in categories_valides:
+        return jsonify({"erreur": "La categorie doit etre NORMAL, MINIBOSS ou BOSS"}), 400
+
+    champs_numeriques = ["hp", "atk", "def", "mercy"]
+    for champ in champs_numeriques:
+        try:
+            valeur = int(data[champ])
+            if valeur <= 0:
+                return jsonify({"erreur": f"Le champ {champ} doit etre un nombre positif"}), 400
+        except ValueError:
+            return jsonify({"erreur": f"Le champ {champ} doit etre un nombre"}), 400
+
+    nb_actions = ACTIONS_PAR_CATEGORIE[data["categorie"].upper()]
+    actions = [data.get(f"act{i+1}", "-") for i in range(4)]
+    actions_renseignees = [a for a in actions[:nb_actions] if a and a != "-"]
+
+    if len(actions_renseignees) != nb_actions:
+        return jsonify({"erreur": f"Un {data['categorie']} doit avoir exactement {nb_actions} actions"}), 400
+
+    if len(actions_renseignees) != len(set(actions_renseignees)):
+        return jsonify({"erreur": "Les actions doivent etre toutes differentes"}), 400
+
+    for action in actions_renseignees:
+        if action not in ACTIONS_DISPONIBLES:
+            return jsonify({"erreur": f"Action {action} invalide"}), 400
+
+    conn = get_db()
     existant = conn.execute("SELECT * FROM monstres WHERE LOWER(nom) = LOWER(?)", (data["nom"],)).fetchone()
     if existant:
         conn.close()
         return jsonify({"erreur": f"{data['nom']} existe deja"}), 409
 
     conn.execute(
-        "INSERT INTO monstres (categorie, nom, hp, atk, def, mercy) VALUES (?, ?, ?, ?, ?, ?)",
-        (data["categorie"], data["nom"], data["hp"], data["atk"], data["def"], data["mercy"])
+        "INSERT INTO monstres (categorie, nom, hp, atk, def, mercy, act1, act2, act3, act4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (data["categorie"], data["nom"], data["hp"], data["atk"], data["def"], data["mercy"],
+         actions[0], actions[1], actions[2], actions[3])
     )
     conn.commit()
     conn.close()

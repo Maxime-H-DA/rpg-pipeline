@@ -9,15 +9,34 @@ print("Connexion a l'API en ligne...")
 
 try:
     with urllib.request.urlopen(API_URL, timeout=10) as reponse:
-        monstres = json.loads(reponse.read().decode())
+        monstres_api = json.loads(reponse.read().decode())
 
-    with open(CSV_PATH, "w", encoding="utf-8") as f:
-        for m in monstres:
-            f.write(f"{m['categorie']};{m['nom']};{m['hp']};{m['atk']};{m['def']};{m['mercy']}\n")
+    monstres_locaux = []
+    if os.path.exists(CSV_PATH):
+        with open(CSV_PATH, "r", encoding="utf-8") as f:
+            for ligne in f:
+                ligne = ligne.strip()
+                if ligne:
+                    champs = ligne.split(";")
+                    if len(champs) >= 6:
+                        monstres_locaux.append(champs[1])
 
-    print(f"{len(monstres)} monstres recuperes depuis l'API")
-    print("Le fichier monsters.csv a ete mis a jour")
-    print("On joue avec les donnees en ligne")
+    noms_api = [m["nom"] for m in monstres_api]
+    ajoutes = [m for m in monstres_api if m["nom"] not in monstres_locaux]
+    supprimes = [nom for nom in monstres_locaux if nom not in noms_api]
+
+    if not ajoutes and not supprimes:
+        print("Aucun changement detecte - le CSV est deja a jour")
+    else:
+        with open(CSV_PATH, "w", encoding="utf-8") as f:
+            for m in monstres_api:
+                f.write(f"{m['categorie']};{m['nom']};{m['hp']};{m['atk']};{m['def']};{m['mercy']}\n")
+        
+        if ajoutes:
+            print(f"{len(ajoutes)} monstre(s) ajoute(s) : {', '.join([m['nom'] for m in ajoutes])}")
+        if supprimes:
+            print(f"{len(supprimes)} monstre(s) supprime(s) : {', '.join(supprimes)}")
+        print("Le fichier monsters.csv a ete mis a jour")
 
 except Exception as e:
     print(f"Impossible de contacter l'API : {e}")
