@@ -62,28 +62,33 @@
     <script>
         let token = null;
 
-        const actionsDisponibles = [
+        const actionsDisponibles = 
+        [
             "JOKE", "COMPLIMENT", "DANCE", "PET",
             "DISCUSS", "OBSERVE", "INSULT", "THREATEN"
         ];
 
-        const actionsParCategorie = {
+        const actionsParCategorie = 
+        {
             "NORMAL": 2,
             "MINIBOSS": 3,
             "BOSS": 4
         };
 
-        function afficherMessage(texte) {
+        function afficherMessage(texte) 
+        {
             document.getElementById("message").textContent = texte;
             setTimeout(() => document.getElementById("message").textContent = "", 3000);
         }
 
-        function mettreAJourActions() {
+        function mettreAJourActions() 
+        {
             const categorie = document.getElementById("categorie").value;
             const section = document.getElementById("section-actions");
             const container = document.getElementById("selects-actions");
 
-            if (!categorie) {
+            if (!categorie) 
+            {
                 section.style.display = "none";
                 return;
             }
@@ -93,7 +98,8 @@
 
             const nb = actionsParCategorie[categorie];
 
-            for (let i = 1; i <= nb; i++) {
+            for (let i = 1; i <= nb; i++) 
+            {
                 const select = document.createElement("select");
                 select.id = "act" + i;
 
@@ -102,7 +108,8 @@
                 optionVide.textContent = "-- Action " + i + " --";
                 select.appendChild(optionVide);
 
-                for (const action of actionsDisponibles) {
+                for (const action of actionsDisponibles) 
+                {
                     const option = document.createElement("option");
                     option.value = action;
                     option.textContent = action;
@@ -113,7 +120,8 @@
                 container.appendChild(document.createTextNode(" "));
             }
 
-            if (categorie === "NORMAL") {
+            if (categorie === "NORMAL") 
+            {
                 const hidden3 = document.createElement("input");
                 hidden3.type = "hidden";
                 hidden3.id = "act3";
@@ -127,7 +135,8 @@
                 container.appendChild(hidden4);
             }
 
-            if (categorie === "MINIBOSS") {
+            if (categorie === "MINIBOSS") 
+            {
                 const hidden4 = document.createElement("input");
                 hidden4.type = "hidden";
                 hidden4.id = "act4";
@@ -136,11 +145,13 @@
             }
         }
 
-        async function login() {
+        async function login() 
+        {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const reponse = await fetch("/login", {
+            const reponse = await fetch("/login", 
+            {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password })
@@ -148,34 +159,47 @@
 
             const data = await reponse.json();
 
-            if (reponse.ok) {
+            if (reponse.ok) 
+            {
                 token = data.token;
                 document.getElementById("section-login").style.display = "none";
                 document.getElementById("section-admin").style.display = "block";
                 afficherMessage("Connecte en tant qu'admin");
                 chargerMonstres();
-            } else {
+            } 
+            else 
+            {
                 afficherMessage("Identifiants incorrects");
             }
         }
 
-        function deconnexion() {
+        function deconnexion() 
+        {
             token = null;
             document.getElementById("section-login").style.display = "block";
             document.getElementById("section-admin").style.display = "none";
             chargerMonstres();
         }
 
-        async function chargerMonstres() {
+        async function chargerMonstres() 
+        {
             const reponse = await fetch("/monstres");
             const monstres = await reponse.json();
             const tbody = document.getElementById("liste-monstres");
             tbody.innerHTML = "";
 
-            for (const m of monstres) {
+            for (const m of monstres) 
+            {
                 const actions = [m.act1, m.act2, m.act3, m.act4]
                     .filter(a => a && a !== "-")
                     .join(", ");
+
+                let boutonSupprimer = "";
+
+                if (token) 
+                {
+                    boutonSupprimer = `<button onclick="supprimerMonstre('${m.nom}')">Supprimer</button>`;
+                }
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
@@ -186,14 +210,16 @@
                     <td>${m.def}</td>
                     <td>${m.mercy}</td>
                     <td>${actions}</td>
-                    <td>${token ? `<button onclick="supprimerMonstre('${m.nom}')">Supprimer</button>` : ""}</td>
+                    <td>${boutonSupprimer}</td>
                 `;
                 tbody.appendChild(tr);
             }
         }
 
-        async function supprimerMonstre(nom) {
-            const reponse = await fetch("/monstres/" + nom, {
+        async function supprimerMonstre(nom) 
+        {
+            const reponse = await fetch("/monstres/" + nom, 
+            {
                 method: "DELETE",
                 headers: { "Authorization": "Bearer " + token }
             });
@@ -203,18 +229,43 @@
             chargerMonstres();
         }
 
-        async function ajouterMonstre() {
+        async function ajouterMonstre() 
+        {
             const categorie = document.getElementById("categorie").value;
             const nb = actionsParCategorie[categorie] || 0;
 
             const actionsChoisies = [];
-            for (let i = 1; i <= nb; i++) {
+            for (let i = 1; i <= nb; i++) 
+            {
                 actionsChoisies.push(document.getElementById("act" + i).value);
             }
 
-            if (new Set(actionsChoisies).size !== actionsChoisies.length) {
+            if (new Set(actionsChoisies).size !== actionsChoisies.length) 
+            {
                 afficherMessage("Les actions doivent etre toutes differentes");
                 return;
+            }
+
+            let act1 = "-";
+            let act2 = "-";
+            let act3 = "-";
+            let act4 = "-";
+
+            if (document.getElementById("act1")) 
+            {
+                act1 = document.getElementById("act1").value;
+            }
+            if (document.getElementById("act2")) 
+            {
+                act2 = document.getElementById("act2").value;
+            }
+            if (document.getElementById("act3")) 
+            {
+                act3 = document.getElementById("act3").value;
+            }
+            if (document.getElementById("act4")) 
+            {
+                act4 = document.getElementById("act4").value;
             }
 
             const monstre = {
@@ -224,15 +275,17 @@
                 atk: document.getElementById("atk").value,
                 def: document.getElementById("def").value,
                 mercy: document.getElementById("mercy").value,
-                act1: document.getElementById("act1") ? document.getElementById("act1").value : "-",
-                act2: document.getElementById("act2") ? document.getElementById("act2").value : "-",
-                act3: document.getElementById("act3") ? document.getElementById("act3").value : "-",
-                act4: document.getElementById("act4") ? document.getElementById("act4").value : "-"
+                act1: act1,
+                act2: act2,
+                act3: act3,
+                act4: act4
             };
 
-            const reponse = await fetch("/monstres", {
+            const reponse = await fetch("/monstres", 
+            {
                 method: "POST",
-                headers: {
+                headers: 
+                {
                     "Content-Type": "application/json",
                     "Authorization": "Bearer " + token
                 },
