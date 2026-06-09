@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css">
     <title>Bestiaire RPG</title>
 </head>
 <body>
@@ -17,7 +18,7 @@
         <button onclick="login()">Se connecter</button>
     </div>
 
-    <div id="section-admin" style="display:none">
+    <div id="section-admin" class="cache">
         <h2>Ajouter un monstre</h2>
 
         <select id="categorie" onchange="mettreAJourActions()">
@@ -33,7 +34,7 @@
         <input type="text" id="def" placeholder="DEF" />
         <input type="text" id="mercy" placeholder="Mercy" />
 
-        <div id="section-actions" style="display:none">
+        <div id="section-actions" class="cache">
             <h3>Actions ACT</h3>
             <div id="selects-actions"></div>
         </div>
