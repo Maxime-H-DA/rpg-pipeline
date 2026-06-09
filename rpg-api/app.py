@@ -103,11 +103,6 @@ def verifier_token():
 
 @app.after_request
 def ajouter_headers_securite(response):
-
-    if request.path.startswith("/static/"):
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -127,7 +122,11 @@ def ajouter_headers_securite(response):
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=3600"
+    else:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
 
     return response
 
