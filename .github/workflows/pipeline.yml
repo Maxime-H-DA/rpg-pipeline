@@ -64,3 +64,44 @@ jobs:
           image-ref: rpg-api
           severity: HIGH,CRITICAL
           exit-code: 0
+
+  sast-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v4
+
+      - name: Analyse Bandit (vulnérabilités Python)
+        run: |
+          pip install bandit
+          bandit -r rpg-api/ -f json -o bandit-report.json || true
+
+      - name: Analyse Semgrep (SAST moderne)
+        run: |
+          pip install semgrep
+          semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
+
+      - name: Upload rapports SAST
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-reports
+          path: |
+            bandit-report.json
+            semgrep-report.json
+
+  dast-api:
+    runs-on: ubuntu-latest
+    needs: scan-api
+    steps:
+      - name: OWASP ZAP sur l'API Render
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: 'https://rpg-pipeline.onrender.com'
+          fail_action: false
+          cmd_options: '-a'
+
+      - name: Upload rapport ZAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
