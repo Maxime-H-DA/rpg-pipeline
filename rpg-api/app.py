@@ -4,7 +4,7 @@ import sqlite3
 import jwt
 import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../static")
 
 TOKEN_SECRET = os.environ.get("API_SECRET_KEY", "changeme")
 ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
