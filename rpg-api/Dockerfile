@@ -7,6 +7,7 @@ RUN pip install -r requirements.txt
 
 COPY rpg-api/app.py .
 COPY rpg-api/templates/ templates/
+COPY rpg-api/static/ static/
 COPY rpg-source/monsters.csv .
 
 EXPOSE 5000
