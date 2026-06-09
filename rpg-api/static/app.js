@@ -25,11 +25,11 @@ function mettreAJourActions()
 
     if (!categorie) 
     {
-        section.style.display = "none";
+        section.classList.add("cache");
         return;
     }
 
-    section.style.display = "block";
+    section.classList.remove("cache");
     container.innerHTML = "";
 
     const nb = actionsParCategorie[categorie];
@@ -98,8 +98,8 @@ async function login()
     if (reponse.ok) 
     {
         token = data.token;
-        document.getElementById("section-login").style.display = "none";
-        document.getElementById("section-admin").style.display = "block";
+        document.getElementById("section-login").classList.add("cache");
+        document.getElementById("section-admin").classList.remove("cache");
         afficherMessage("Connecte en tant qu'admin");
         chargerMonstres();
     } 
@@ -112,8 +112,8 @@ async function login()
 function deconnexion() 
 {
     token = null;
-    document.getElementById("section-login").style.display = "block";
-    document.getElementById("section-admin").style.display = "none";
+    document.getElementById("section-login").classList.remove("cache");
+    document.getElementById("section-admin").classList.add("cache");
     chargerMonstres();
 }
 

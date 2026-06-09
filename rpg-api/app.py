@@ -113,7 +113,9 @@ def ajouter_headers_securite(response):
         "style-src 'self'; "
         "img-src 'self'; "
         "font-src 'self'; "
-        "connect-src 'self'"
+        "connect-src 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
     )
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
