@@ -17,6 +17,12 @@ Le jeu est compilé dans un environnement isolé. N'importe qui peut le lancer s
 **Scan de sécurité avec Trivy**
 L'image Docker est analysée pour détecter des failles connues. Le premier scan a révélé une faille critique sur l'image de base, j'ai migré vers Alpine Linux et le scan suivant était propre.
 
+**Analyse statique Python (Bandit + Semgrep)**
+L'API Flask est analysée avec deux outils complémentaires — Bandit détecte les vulnérabilités Python classiques, Semgrep applique les règles OWASP sur la sémantique du code.
+
+**Test d'intrusion automatisé (OWASP ZAP)**
+À chaque push, ZAP teste l'API directement en production comme le ferait un attaquant externe. Les premiers rapports ont révélé 7 problèmes de configuration HTTP — headers de sécurité manquants, politique CSP absente, styles inline. Tous ont été corrigés itérativement.
+
 ## L'API du bestiaire
 
 Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
@@ -42,7 +48,7 @@ Le script récupère les monstres depuis l'API et met à jour le fichier `monste
 
 ## Outils utilisés
 
-GitHub Actions, Docker, Cppcheck, Gitleaks, Trivy, Flask, SQLite, JWT
+GitHub Actions, Docker, Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Flask, SQLite, JWT
 
 ## Administration
 
