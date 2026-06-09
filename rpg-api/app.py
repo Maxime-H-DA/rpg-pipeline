@@ -84,7 +84,6 @@ def init_db():
         conn.commit()
     conn.close()
 
-
 def verifier_token():
     auth = request.headers.get("Authorization")
     if not auth:
@@ -102,6 +101,15 @@ def verifier_token():
     except jwt.InvalidTokenError:
         return False
 
+@app.after_request
+def ajouter_headers_securite(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    return response
 
 @app.route("/")
 def index():

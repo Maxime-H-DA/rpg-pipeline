@@ -91,7 +91,6 @@ jobs:
 
   dast-api:
     runs-on: ubuntu-latest
-    needs: scan-api
     permissions:
       issues: write
     steps:
@@ -101,9 +100,3 @@ jobs:
           target: 'https://rpg-pipeline.onrender.com'
           fail_action: false
           cmd_options: '-a'
-
-      - name: Upload rapport ZAP
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: report_html.html
