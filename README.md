@@ -23,6 +23,9 @@ L'API Flask est analysée avec deux outils complémentaires — Bandit détecte 
 **Test d'intrusion automatisé (OWASP ZAP)**
 À chaque push, ZAP teste l'API directement en production comme le ferait un attaquant externe. Les premiers rapports ont révélé 7 problèmes de configuration HTTP — headers de sécurité manquants, politique CSP absente, styles inline. Tous ont été corrigés itérativement.
 
+**Tests unitaires (pytest)**
+L'API est couverte par 31 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
+
 ## L'API du bestiaire
 
 Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
