@@ -51,7 +51,7 @@ Le script récupère les monstres depuis l'API et met à jour le fichier `monste
 
 ## Outils utilisés
 
-GitHub Actions, Docker, Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Flask, SQLite, JWT
+GitHub Actions, Docker, Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, pytest, Flask, SQLite, JWT
 
 ## Administration
 
