@@ -1,0 +1,294 @@
+import pytest
+import jwt
+import datetime
+import sys
+import os
+import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import app as flask_app
+
+SECRET = "changeme"
+
+@pytest.fixture
+def client():
+    db_fd, db_path = tempfile.mkstemp()
+    os.close(db_fd)
+    flask_app.config["TESTING"] = True
+    flask_app.config["DATABASE"] = db_path
+
+    with flask_app.app_context():
+        from app import get_db
+        db = get_db()
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS monstres (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                categorie TEXT,
+                nom TEXT,
+                hp TEXT,
+                atk TEXT,
+                def TEXT,
+                mercy TEXT,
+                act1 TEXT,
+                act2 TEXT,
+                act3 TEXT,
+                act4 TEXT
+            )
+        """)
+        db.commit()
+
+    with flask_app.test_client() as client:
+        yield client
+
+@pytest.fixture
+def token_valide():
+    return jwt.encode(
+        {"username": "admin", "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)},
+        SECRET,
+        algorithm="HS256",
+    )
+
+
+@pytest.fixture
+def token_expire():
+    return jwt.encode(
+        {"username": "admin", "exp": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)},
+        SECRET,
+        algorithm="HS256",
+    )
+
+
+def test_index(client):
+    assert client.get("/").status_code == 200
+
+
+def test_get_actions(client):
+    reponse = client.get("/actions")
+    assert reponse.status_code == 200
+    data = reponse.get_json()
+    assert "JOKE" in data
+    assert "DANCE" in data
+
+
+def test_login_succes(client):
+    reponse = client.post("/login", json={"username": "admin", "password": "password"})
+    assert reponse.status_code == 200
+    assert "token" in reponse.get_json()
+
+
+def test_login_mauvais_mot_de_passe(client):
+    assert client.post("/login", json={"username": "admin", "password": "mauvais"}).status_code == 401
+
+
+def test_login_mauvais_username(client):
+    assert client.post("/login", json={"username": "inconnu", "password": "password"}).status_code == 401
+
+
+def test_login_sans_donnees(client):
+    assert client.post("/login", json=None, content_type="application/json").status_code == 400
+
+
+def test_get_monstres(client):
+    reponse = client.get("/monstres")
+    assert reponse.status_code == 200
+    assert isinstance(reponse.get_json(), list)
+
+
+def test_get_monstre_introuvable(client):
+    assert client.get("/monstres/monstre_qui_nexiste_pas_xyz").status_code == 404
+
+
+def test_get_monstre_existant(client, token_valide):
+    client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "Slime", "hp": "20", "atk": "5", "def": "3", "mercy": "30", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    reponse = client.get("/monstres/Slime")
+    assert reponse.status_code == 200
+    assert reponse.get_json()["nom"] == "Slime"
+
+
+def test_get_monstre_insensible_casse(client, token_valide):
+    client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "Dragon", "hp": "100", "atk": "20", "def": "15", "mercy": "10", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert client.get("/monstres/dragon").status_code == 200
+
+
+def test_ajouter_monstre_sans_token(client):
+    reponse = client.post("/monstres", json={
+        "categorie": "NORMAL", "nom": "TestMonstre",
+        "hp": "10", "atk": "5", "def": "3", "mercy": "50",
+        "act1": "JOKE", "act2": "DANCE",
+    })
+    assert reponse.status_code == 401
+
+
+def test_ajouter_monstre_token_expire(client, token_expire):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_expire}"},
+    )
+    assert reponse.status_code == 401
+
+
+def test_ajouter_monstre_token_invalide(client):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": "Bearer tokenbidon"},
+    )
+    assert reponse.status_code == 401
+
+
+def test_ajouter_monstre_normal_succes(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "Goblin", "hp": "15", "atk": "4", "def": "2", "mercy": "40", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 201
+
+
+def test_ajouter_monstre_miniboss_succes(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "MINIBOSS", "nom": "OrcChef", "hp": "80", "atk": "15", "def": "10", "mercy": "20", "act1": "JOKE", "act2": "DANCE", "act3": "PET"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 201
+
+
+def test_ajouter_monstre_boss_succes(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "BOSS", "nom": "DarkLord", "hp": "500", "atk": "50", "def": "40", "mercy": "5", "act1": "JOKE", "act2": "DANCE", "act3": "PET", "act4": "DISCUSS"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 201
+
+
+def test_ajouter_monstre_categorie_invalide(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "INVALID", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_hp_negatif(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "-5", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_hp_zero(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "0", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_hp_non_numerique(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "abc", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_actions_dupliquees(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "JOKE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_action_invalide(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "FAKEACTION"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_trop_peu_actions(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_champ_manquant(client, token_valide):
+    reponse = client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "TestMonstre", "hp": "10", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_ajouter_monstre_doublon(client, token_valide):
+    payload = {"categorie": "NORMAL", "nom": "Duplicata", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"}
+    headers = {"Authorization": f"Bearer {token_valide}"}
+    client.post("/monstres", json=payload, headers=headers)
+    assert client.post("/monstres", json=payload, headers=headers).status_code == 409
+
+
+def test_supprimer_monstre_sans_token(client):
+    assert client.delete("/monstres/nimportequoi").status_code == 401
+
+
+def test_supprimer_monstre_introuvable(client, token_valide):
+    reponse = client.delete(
+        "/monstres/monstre_qui_nexiste_pas_xyz",
+        headers={"Authorization": f"Bearer {token_valide}"},
+    )
+    assert reponse.status_code == 404
+
+
+def test_supprimer_monstre_succes(client, token_valide):
+    headers = {"Authorization": f"Bearer {token_valide}"}
+    client.post(
+        "/monstres",
+        json={"categorie": "NORMAL", "nom": "ASupprimer", "hp": "10", "atk": "5", "def": "3", "mercy": "50", "act1": "JOKE", "act2": "DANCE"},
+        headers=headers,
+    )
+    assert client.delete("/monstres/ASupprimer", headers=headers).status_code == 200
+    assert client.get("/monstres/ASupprimer").status_code == 404
+
+
+def test_headers_securite_presents(client):
+    reponse = client.get("/monstres")
+    assert "X-Content-Type-Options" in reponse.headers
+    assert "X-Frame-Options" in reponse.headers
+    assert "Content-Security-Policy" in reponse.headers
+    assert "Strict-Transport-Security" in reponse.headers
+
+
+def test_headers_securite_valeurs(client):
+    reponse = client.get("/monstres")
+    assert reponse.headers["X-Content-Type-Options"] == "nosniff"
+    assert reponse.headers["X-Frame-Options"] == "DENY"
+
+
+def test_header_cache_control_api(client):
+    reponse = client.get("/monstres")
+    assert "no-store" in reponse.headers.get("Cache-Control", "")
