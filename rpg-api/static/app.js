@@ -11,19 +11,19 @@ const actionsParCategorie = {
     "BOSS": 4
 };
 
-function afficherMessage(texte) 
+function afficherMessage(texte)
 {
     document.getElementById("message").textContent = texte;
     setTimeout(() => document.getElementById("message").textContent = "", 3000);
 }
 
-function mettreAJourActions() 
+function mettreAJourActions()
 {
     const categorie = document.getElementById("categorie").value;
     const section = document.getElementById("section-actions");
     const container = document.getElementById("selects-actions");
 
-    if (!categorie) 
+    if (!categorie)
     {
         section.classList.add("cache");
         return;
@@ -34,7 +34,7 @@ function mettreAJourActions()
 
     const nb = actionsParCategorie[categorie];
 
-    for (let i = 1; i <= nb; i++) 
+    for (let i = 1; i <= nb; i++)
     {
         const select = document.createElement("select");
         select.id = "act" + i;
@@ -44,7 +44,7 @@ function mettreAJourActions()
         optionVide.textContent = "-- Action " + i + " --";
         select.appendChild(optionVide);
 
-        for (const action of actionsDisponibles) 
+        for (const action of actionsDisponibles)
         {
             const option = document.createElement("option");
             option.value = action;
@@ -56,7 +56,7 @@ function mettreAJourActions()
         container.appendChild(document.createTextNode(" "));
     }
 
-    if (categorie === "NORMAL") 
+    if (categorie === "NORMAL")
     {
         const hidden3 = document.createElement("input");
         hidden3.type = "hidden";
@@ -71,7 +71,7 @@ function mettreAJourActions()
         container.appendChild(hidden4);
     }
 
-    if (categorie === "MINIBOSS") 
+    if (categorie === "MINIBOSS")
     {
         const hidden4 = document.createElement("input");
         hidden4.type = "hidden";
@@ -81,12 +81,55 @@ function mettreAJourActions()
     }
 }
 
-async function login() 
+async function ajouterMonstre()
+{
+    const categorie = document.getElementById("categorie").value;
+    const nom = document.getElementById("nom").value;
+    const hp = document.getElementById("hp").value;
+    const atk = document.getElementById("atk").value;
+    const def = document.getElementById("def").value;
+    const mercy = document.getElementById("mercy").value;
+
+    const actions = {};
+    for (let i = 1; i <= 4; i++)
+    {
+        const champ = document.getElementById("act" + i);
+        actions["act" + i] = champ ? champ.value : "-";
+    }
+
+    const reponse = await fetch("/monstres",
+    {
+        method: "POST",
+        headers:
+        {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ categorie, nom, hp, atk, def, mercy, ...actions })
+    });
+
+    const data = await reponse.json();
+    afficherMessage(data.message || data.erreur);
+
+    if (reponse.ok)
+    {
+        document.getElementById("nom").value = "";
+        document.getElementById("hp").value = "";
+        document.getElementById("atk").value = "";
+        document.getElementById("def").value = "";
+        document.getElementById("mercy").value = "";
+        document.getElementById("categorie").value = "";
+        mettreAJourActions();
+        chargerMonstres();
+    }
+}
+
+async function login()
 {
     const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
 
-    const reponse = await fetch("/login", 
+    const reponse = await fetch("/login",
     {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,21 +138,21 @@ async function login()
 
     const data = await reponse.json();
 
-    if (reponse.ok) 
+    if (reponse.ok)
     {
         token = data.token;
         document.getElementById("section-login").classList.add("cache");
         document.getElementById("section-admin").classList.remove("cache");
         afficherMessage("Connecte en tant qu'admin");
         chargerMonstres();
-    } 
-    else 
+    }
+    else
     {
         afficherMessage("Identifiants incorrects");
     }
 }
 
-function deconnexion() 
+function deconnexion()
 {
     token = null;
     document.getElementById("section-login").classList.remove("cache");
@@ -117,25 +160,18 @@ function deconnexion()
     chargerMonstres();
 }
 
-async function chargerMonstres() 
+async function chargerMonstres()
 {
     const reponse = await fetch("/monstres");
     const monstres = await reponse.json();
     const tbody = document.getElementById("liste-monstres");
     tbody.innerHTML = "";
 
-    for (const m of monstres) 
+    for (const m of monstres)
     {
         const actions = [m.act1, m.act2, m.act3, m.act4]
             .filter(a => a && a !== "-")
             .join(", ");
-
-        let boutonSupprimer = "";
-
-        if (token) 
-        {
-            boutonSupprimer = `<button onclick="supprimerMonstre('${m.nom}')">Supprimer</button>`;
-        }
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -146,15 +182,25 @@ async function chargerMonstres()
             <td>${m.def}</td>
             <td>${m.mercy}</td>
             <td>${actions}</td>
-            <td>${boutonSupprimer}</td>
+            <td></td>
         `;
+
+        if (token)
+        {
+            const tdBouton = tr.lastElementChild;
+            const btn = document.createElement("button");
+            btn.textContent = "Supprimer";
+            btn.addEventListener("click", () => supprimerMonstre(m.nom));
+            tdBouton.appendChild(btn);
+        }
+
         tbody.appendChild(tr);
     }
 }
 
-async function supprimerMonstre(nom) 
+async function supprimerMonstre(nom)
 {
-    const reponse = await fetch("/monstres/" + nom, 
+    const reponse = await fetch("/monstres/" + nom,
     {
         method: "DELETE",
         headers: { "Authorization": "Bearer " + token }
@@ -164,5 +210,13 @@ async function supprimerMonstre(nom)
     afficherMessage(data.message || data.erreur);
     chargerMonstres();
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("btn-login").addEventListener("click", login);
+    document.getElementById("categorie").addEventListener("change", mettreAJourActions);
+    document.getElementById("btn-ajouter").addEventListener("click", ajouterMonstre);
+    document.getElementById("btn-deconnexion").addEventListener("click", deconnexion);
+    chargerMonstres();
+});
 
 chargerMonstres();

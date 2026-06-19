@@ -8,7 +8,7 @@ repos:
     rev: 1.8.3
     hooks:
       - id: bandit
-        args: ["-r", "rpg-api/", "-ll"]
+        args: ["-ll"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

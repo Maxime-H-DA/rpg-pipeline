@@ -34,6 +34,8 @@ L'API est couverte par 31 tests unitaires — authentification JWT, validation d
 
 Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
 
+### Docker (local)
+
 Pour tester l'API en local sans impacter la version en ligne — utile pour tester des modifications de code avant de les déployer :
 
 ```bash
@@ -41,7 +43,22 @@ docker build -t rpg-api -f rpg-api/Dockerfile .
 docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 ```
 
-Note : les modifications faites en local ne sont pas synchronisées avec la version en ligne.
+### Kubernetes (local)
+
+L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute avec un utilisateur non-root, les ressources CPU et mémoire sont limitées, des probes de santé surveillent que l'API répond, et les secrets (identifiants admin, clé JWT) sont injectés via un objet Secret au lieu d'être codés en dur dans l'image.
+
+```bash
+kind create cluster --config k8s/kind-config.yaml
+docker build -t rpg-api:local -f rpg-api/Dockerfile .
+kind load docker-image rpg-api:local --name rpg-pipeline
+kubectl apply -f k8s/00-namespace.yaml
+kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f k8s/02-deployment.yaml
+kubectl apply -f k8s/03-service.yaml
+kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
+```
+
+Note : avec les deux méthodes, les modifications faites en local ne sont pas synchronisées avec la version en ligne.
 
 ## Synchronisation avec le jeu
 
@@ -55,11 +72,7 @@ Le script récupère les monstres depuis l'API et met à jour le fichier `monste
 
 ## Outils utilisés
 
-GitHub Actions, Docker, Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, pytest, Flask, SQLite, JWT
-
-## Administration
-
-- Dashboard Render : [Gérer le serveur](https://dashboard.render.com/web/srv-d8ab07jeo5us739hn4d0)
+GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, pytest, Flask, SQLite, JWT
 
 ## Projet source
 
@@ -101,6 +114,8 @@ The API is covered by 31 unit tests — JWT authentication, data validation, err
 
 A Flask API deployed at [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) that exposes the game's monster data. Reading is open, modifications require authentication with a username and password.
 
+### Docker (local)
+
 To test the API locally without impacting the live version — useful for testing code changes before deploying:
 
 ```bash
@@ -108,7 +123,22 @@ docker build -t rpg-api -f rpg-api/Dockerfile .
 docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 ```
 
-Note: local changes are not synced with the live version.
+### Kubernetes (local)
+
+The API also runs on a local Kubernetes cluster with Kind. The container runs as a non-root user, CPU and memory are capped, health probes monitor that the API responds, and secrets (admin credentials, JWT key) are injected through a Secret object instead of being hardcoded in the image.
+
+```bash
+kind create cluster --config k8s/kind-config.yaml
+docker build -t rpg-api:local -f rpg-api/Dockerfile .
+kind load docker-image rpg-api:local --name rpg-pipeline
+kubectl apply -f k8s/00-namespace.yaml
+kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f k8s/02-deployment.yaml
+kubectl apply -f k8s/03-service.yaml
+kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
+```
+
+Note: with either method, local changes are not synced with the live version.
 
 ## Syncing with the game
 
@@ -122,11 +152,7 @@ The script fetches monsters from the API and updates the `monsters.csv` file use
 
 ## Tools used
 
-GitHub Actions, Docker, Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, pytest, Flask, SQLite, JWT
-
-## Administration
-
-- Render Dashboard: [Manage the server](https://dashboard.render.com/web/srv-d8ab07jeo5us739hn4d0)
+GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux, Cppcheck, Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, pytest, Flask, SQLite, JWT
 
 ## Source project
 

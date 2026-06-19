@@ -1,5 +1,7 @@
 FROM python:3.11-slim
 
+ENV PYTHONUTF8=1
+
 WORKDIR /app
 
 COPY rpg-api/requirements.txt .
@@ -9,6 +11,9 @@ COPY rpg-api/app.py .
 COPY rpg-api/templates/ templates/
 COPY rpg-api/static/ static/
 COPY rpg-source/monsters.csv .
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 5000
 

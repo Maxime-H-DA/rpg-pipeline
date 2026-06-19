@@ -4,7 +4,7 @@ import sqlite3
 import jwt
 import datetime
 
-app = Flask(__name__, static_folder="../static")
+app = Flask(__name__, static_folder="static")
 
 TOKEN_SECRET = os.environ.get("API_SECRET_KEY", "changeme")
 ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
@@ -48,7 +48,7 @@ def init_db():
     conn.commit()
 
     if not db_existe:
-        with open("monsters.csv", "r") as f:
+        with open("monsters.csv", "r", encoding="utf-8") as f:
             for ligne in f:
                 ligne = ligne.strip()
                 if not ligne:
@@ -124,7 +124,7 @@ def ajouter_headers_securite(response):
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
 
-    if request.path.startswith("/static/"):
+    if request.path.startswith("/static/") and response.status_code == 200:
         response.headers["Cache-Control"] = "public, max-age=3600"
     else:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
@@ -278,4 +278,4 @@ def supprimer_monstre(nom):
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)  # nosec B104 - necessaire pour accepter les connexions depuis Docker/Kubernetes
