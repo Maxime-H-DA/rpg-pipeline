@@ -133,6 +133,8 @@ jobs:
     steps:
       - name: Téléchargement du code source
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Calcul du nom d'image en minuscule
         id: image
