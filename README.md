@@ -4,13 +4,13 @@
 
 # Pipeline du RPG Alterdune
 
-Pipeline CI/CD sécurisé autour de mon projet RPG en C++ — vérification automatique du code, compilation dans un environnement isolé, et détection de failles de sécurité à chaque modification (SAST, DAST, scan de conteneurs, déploiement Kubernetes).
+Pipeline CI/CD sécurisé autour de mon projet RPG en C++ — vérification automatique du code, compilation dans un environnement isolé, et détection de failles de sécurité à chaque modification (SAST, DAST, scan de conteneurs, sécurité supply chain, déploiement Kubernetes).
 
 L'idée était de prendre un vrai projet et lui appliquer des pratiques qu'on retrouve en entreprise.
 
 ## Avant même le push
 
-Des hooks pre-commit tournent en local à chaque commit — Gitleaks et Bandit refont les mêmes vérifications qu'en CI mais avant que le code parte sur GitHub, en plus de quelques hooks d'hygiène (espaces en fin de ligne, fichiers volumineux, YAML valide).
+Des hooks pre-commit tournent en local à chaque commit — Gitleaks, Bandit et Checkov refont les mêmes vérifications qu'en CI mais avant que le code parte sur GitHub, en plus de quelques hooks d'hygiène (espaces en fin de ligne, fichiers volumineux, YAML valide).
 
 ## Ce qui se passe à chaque push
 
@@ -20,11 +20,13 @@ push (main)
  ├─► scan-jeu : Build Docker (jeu) + Trivy
  ├─► scan-api : Build Docker (API) + Trivy
  ├─► sast-api : Bandit + Semgrep
- ├─► tests-api : pytest (31 tests unitaires)
- └─► dast-api : OWASP ZAP sur l'API déjà en ligne (Render)
+ ├─► tests-api : pytest
+ ├─► dast-api : OWASP ZAP sur l'API déjà en ligne (Render)
+ ├─► supply-chain-api : SBOM (Syft) + signature de l'image (Cosign)
+ └─► iac-scan-checkov : scan des manifests Kubernetes
 ```
 
-Les 6 jobs tournent en parallèle à chaque push, sans dépendance entre eux. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
+Les 8 jobs tournent en parallèle à chaque push, sans dépendance entre eux. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
 
 **Analyse du code avec Cppcheck**
 Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation.
@@ -41,8 +43,14 @@ L'API Flask est analysée avec deux outils complémentaires — Bandit détecte 
 **Test d'intrusion automatisé (OWASP ZAP)**
 À chaque push, ZAP teste l'API directement en production comme le ferait un attaquant externe. Le premier scan a remonté 7 problèmes de configuration HTTP — headers de sécurité manquants (nosniff, CSP, HSTS), pas de politique de cache sur les routes sensibles. Tous corrigés dans `app.py`.
 
+**Sécurité supply chain (Syft + Cosign)**
+Chaque image poussée sur GitHub Container Registry génère un inventaire de ses dépendances (SBOM, format SPDX) et est signée en mode keyless via Sigstore — aucune clé privée à gérer, la signature s'appuie sur l'identité du workflow GitHub Actions et est publiée dans un registre de transparence public (Rekor).
+
+**Scan d'infrastructure avec Checkov**
+Les manifests Kubernetes sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations (UID trop bas, secrets en variables d'environnement, système de fichiers racine non protégé en lecture seule, absence de règle réseau). 7 ont été corrigées ; les 2 restantes sont documentées et acceptées comme contraintes propres à l'environnement de développement local (Kind).
+
 **Tests unitaires (pytest)**
-L'API est couverte par 31 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
+L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
 
 ## L'API du bestiaire
 
@@ -59,7 +67,7 @@ docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 
 ### Kubernetes (local)
 
-L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root, avec des ressources CPU et mémoire limitées. Des probes de santé surveillent que l'API répond. Les secrets (identifiants admin, clé JWT) sont injectés via un objet Secret plutôt que codés en dur dans l'image.
+L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root, avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets (identifiants admin, clé JWT) sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement ou codés en dur dans l'image.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -69,8 +77,11 @@ kubectl apply -f k8s/00-namespace.yaml
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/02-deployment.yaml
 kubectl apply -f k8s/03-service.yaml
+kubectl rollout restart deployment/rpg-api -n rpg-pipeline
 kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
 ```
+
+L'API est alors accessible sur **http://localhost:5000**
 
 Note : avec les deux méthodes, les modifications faites en local ne sont pas synchronisées avec la version en ligne.
 
@@ -87,7 +98,7 @@ py play.py
 ## Outils utilisés
 
 - **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux
-- **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck
+- **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & tests** : Flask, SQLite, JWT, pytest
 
 ## Projet source
@@ -100,13 +111,13 @@ Le code du jeu RPG : [projet-RPG-S6](https://github.com/Maxime-H-DA/projet-RPG-S
 
 # Alterdune RPG Pipeline
 
-Secure CI/CD pipeline around my C++ RPG project — automatic code checks, compilation in an isolated environment, and security vulnerability detection on every change (SAST, DAST, container scanning, Kubernetes deployment).
+Secure CI/CD pipeline around my C++ RPG project — automatic code checks, compilation in an isolated environment, and security vulnerability detection on every change (SAST, DAST, container scanning, supply chain security, Kubernetes deployment).
 
 The idea was to take a real project and apply practices found in professional environments.
 
 ## Before the push even happens
 
-Pre-commit hooks run locally on every commit — Gitleaks and Bandit run the same checks as CI before the code reaches GitHub, plus a few hygiene hooks (trailing whitespace, large files, valid YAML).
+Pre-commit hooks run locally on every commit — Gitleaks, Bandit, and Checkov run the same checks as CI before the code reaches GitHub, plus a few hygiene hooks (trailing whitespace, large files, valid YAML).
 
 ## What happens on every push
 
@@ -116,11 +127,13 @@ push (main)
  ├─► scan-jeu : Docker build (game) + Trivy
  ├─► scan-api : Docker build (API) + Trivy
  ├─► sast-api : Bandit + Semgrep
- ├─► tests-api : pytest (31 unit tests)
- └─► dast-api : OWASP ZAP against the live API (Render)
+ ├─► tests-api : pytest
+ ├─► dast-api : OWASP ZAP against the live API (Render)
+ ├─► supply-chain-api : SBOM (Syft) + image signing (Cosign)
+ └─► iac-scan-checkov : Kubernetes manifest scanning
 ```
 
-All 6 jobs run in parallel on every push, with no dependencies between them. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
+All 8 jobs run in parallel on every push, with no dependencies between them. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
 
 **Code analysis with Cppcheck**
 The C++ code is automatically scanned to detect bugs and issues before compilation even starts.
@@ -137,8 +150,14 @@ The Flask API is analyzed with two complementary tools — Bandit detects classi
 **Automated penetration testing (OWASP ZAP)**
 On every push, ZAP tests the API directly in production the way an external attacker would. The first scan flagged 7 HTTP configuration issues — missing security headers (nosniff, CSP, HSTS), no caching policy on sensitive routes. All fixed in `app.py`.
 
+**Supply chain security (Syft + Cosign)**
+Every image pushed to GitHub Container Registry gets a dependency inventory (SBOM, SPDX format) and is signed keyless via Sigstore — no private key to manage, the signature relies on the GitHub Actions workflow identity and is published to a public transparency log (Rekor).
+
+**Infrastructure scanning with Checkov**
+Kubernetes manifests are scanned on every push. The first scan flagged 9 misconfigurations (UID too low, secrets exposed as environment variables, writable filesystem, missing network policy). 7 were fixed; the remaining 2 are documented and accepted as constraints specific to the local development environment (Kind).
+
 **Unit tests (pytest)**
-The API is covered by 31 unit tests — JWT authentication, data validation, error handling, security headers. Tests run on an isolated SQLite database to avoid polluting production data.
+The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading. Tests run on an isolated SQLite database to avoid polluting production data.
 
 ## The Bestiary API
 
@@ -155,7 +174,7 @@ docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 
 ### Kubernetes (local)
 
-The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root, with capped CPU and memory. Health probes monitor that the API responds. Secrets (admin credentials, JWT key) are injected through a Secret object instead of being hardcoded in the image.
+The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root, with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets (admin credentials, JWT key) are injected as mounted files rather than environment variables or hardcoded values in the image.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -165,8 +184,11 @@ kubectl apply -f k8s/00-namespace.yaml
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/02-deployment.yaml
 kubectl apply -f k8s/03-service.yaml
+kubectl rollout restart deployment/rpg-api -n rpg-pipeline
 kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
 ```
+
+The API is then available at **http://localhost:5000**
 
 Note: with either method, local changes are not synced with the live version.
 
@@ -183,7 +205,7 @@ py play.py
 ## Tools used
 
 - **CI/CD & infrastructure**: GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux
-- **Security**: Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck
+- **Security**: Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & testing**: Flask, SQLite, JWT, pytest
 
 ## Source project

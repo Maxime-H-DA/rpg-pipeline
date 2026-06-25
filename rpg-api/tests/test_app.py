@@ -7,9 +7,18 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import app as app_module
 from app import app as flask_app
+from app import read_secret
+from app import get_db
 
 SECRET = "changeme"
+
+@pytest.fixture(autouse=True)
+def secrets_de_test(monkeypatch):
+    monkeypatch.setattr(app_module, "ADMIN_USER", "admin")
+    monkeypatch.setattr(app_module, "ADMIN_PASSWORD", "password")
+    monkeypatch.setattr(app_module, "TOKEN_SECRET", "changeme")
 
 @pytest.fixture
 def client():
@@ -19,7 +28,6 @@ def client():
     flask_app.config["DATABASE"] = db_path
 
     with flask_app.app_context():
-        from app import get_db
         db = get_db()
         db.execute("""
             CREATE TABLE IF NOT EXISTS monstres (
@@ -292,3 +300,36 @@ def test_headers_securite_valeurs(client):
 def test_header_cache_control_api(client):
     reponse = client.get("/monstres")
     assert "no-store" in reponse.headers.get("Cache-Control", "")
+
+
+def test_read_secret_lit_la_variable_env_si_aucun_fichier(monkeypatch):
+    monkeypatch.setenv("MA_VAR_TEST", "valeur-env")
+    resultat = read_secret("MA_VAR_TEST", "/chemin/qui/nexiste/pas", "defaut")
+    assert resultat == "valeur-env"
+
+
+def test_read_secret_priorise_le_fichier_sur_la_variable_env(tmp_path, monkeypatch):
+    fichier = tmp_path / "mon-secret"
+    fichier.write_text("valeur-du-fichier\n")
+    monkeypatch.setenv("MA_VAR_TEST", "valeur-env")
+    resultat = read_secret("MA_VAR_TEST", str(fichier), "defaut")
+    assert resultat == "valeur-du-fichier"
+
+
+def test_read_secret_nettoie_espaces_et_retours_ligne(tmp_path):
+    fichier = tmp_path / "mon-secret"
+    fichier.write_text("  Xk9$mQ2!vL8pR4#nW7zT3@  \n\n")
+    resultat = read_secret("MA_VAR_INEXISTANTE", str(fichier), "defaut")
+    assert resultat == "Xk9$mQ2!vL8pR4#nW7zT3@"
+
+
+def test_read_secret_retombe_sur_la_valeur_par_defaut(monkeypatch):
+    monkeypatch.delenv("MA_VAR_INEXISTANTE", raising=False)
+    resultat = read_secret("MA_VAR_INEXISTANTE", "/chemin/qui/nexiste/pas", "defaut")
+    assert resultat == "defaut"
+
+
+def test_read_secret_fonctionne_sans_chemin_de_fichier(monkeypatch):
+    monkeypatch.setenv("MA_VAR_TEST", "valeur-env")
+    resultat = read_secret("MA_VAR_TEST", None, "defaut")
+    assert resultat == "valeur-env"

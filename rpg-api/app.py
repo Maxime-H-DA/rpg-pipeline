@@ -6,10 +6,18 @@ import datetime
 
 app = Flask(__name__, static_folder="static")
 
-TOKEN_SECRET = os.environ.get("API_SECRET_KEY", "changeme")
-ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "password")
-DATABASE = "database.db"
+
+def read_secret(env_name, file_path, default=None):
+    if file_path and os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return os.environ.get(env_name, default)
+
+
+TOKEN_SECRET = read_secret("API_SECRET_KEY", "/etc/secrets/API_SECRET_KEY", "changeme")
+ADMIN_USER = read_secret("ADMIN_USERNAME", "/etc/secrets/ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = read_secret("ADMIN_PASSWORD", "/etc/secrets/ADMIN_PASSWORD", "password")
+DATABASE = os.environ.get("API_DB_PATH", "database.db")
 
 ACTIONS_DISPONIBLES = ["JOKE", "COMPLIMENT", "DANCE", "PET", "DISCUSS", "OBSERVE", "INSULT", "THREATEN"]
 ACTIONS_PAR_CATEGORIE = {

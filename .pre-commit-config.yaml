@@ -10,6 +10,13 @@ repos:
       - id: bandit
         args: ["-ll"]
 
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: '3.3.1'
+    hooks:
+      - id: checkov
+        files: \.ya?ml$
+        args: ["--directory", "k8s/", "--framework", "kubernetes", "--compact", "--soft-fail"]
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

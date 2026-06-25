@@ -5,6 +5,9 @@ metadata:
   namespace: rpg-pipeline
   labels:
     app: rpg-api
+  annotations:
+    checkov.io/skip1: "CKV_K8S_43=Dev local Kind : image chargee via kind load docker-image, pas de digest disponible. En prod (ghcr.io) l'image est epinglee par digest et signee via Cosign."
+    checkov.io/skip2: "CKV_K8S_15=IfNotPresent requis pour kind load docker-image, l'image locale n'existe dans aucun registre a pull."
 spec:
   replicas: 2
   selector:
@@ -15,15 +18,29 @@ spec:
       labels:
         app: rpg-api
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: rpg-api
           image: rpg-api:local
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
-          envFrom:
-            - secretRef:
-                name: rpg-api-secret
+          env:
+            - name: API_DB_PATH
+              value: /app/data/database.db
+          volumeMounts:
+            - name: secrets
+              mountPath: /etc/secrets
+              readOnly: true
+            - name: data
+              mountPath: /app/data
           resources:
             requests:
               cpu: "100m"
@@ -45,8 +62,15 @@ spec:
             periodSeconds: 20
           securityContext:
             runAsNonRoot: true
-            runAsUser: 1000
+            runAsUser: 10001
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
+      volumes:
+        - name: secrets
+          secret:
+            secretName: rpg-api-secret
+        - name: data
+          emptyDir: {}

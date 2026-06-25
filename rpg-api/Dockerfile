@@ -12,7 +12,7 @@ COPY rpg-api/templates/ templates/
 COPY rpg-api/static/ static/
 COPY rpg-source/monsters.csv .
 
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 5000

@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rpg-api-netpol
+  namespace: rpg-pipeline
+spec:
+  podSelector:
+    matchLabels:
+      app: rpg-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from: []
+      ports:
+        - protocol: TCP
+          port: 5000
+  egress:
+    - {}

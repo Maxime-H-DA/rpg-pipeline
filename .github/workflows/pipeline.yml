@@ -123,3 +123,80 @@ jobs:
         with:
           target: 'https://rpg-pipeline.onrender.com'
           fail_action: false
+
+  supply-chain-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v4
+
+      - name: Connexion à GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construction et publication de l'image API
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: rpg-api/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/rpg-api:${{ github.sha }}
+
+      - name: Installation de Syft
+        uses: anchore/sbom-action/download-syft@v0.17.9
+
+      - name: Génération du SBOM
+        run: |
+          syft ghcr.io/${{ github.repository_owner }}/rpg-api:${{ github.sha }} \
+            -o spdx-json=sbom-rpg-api.spdx.json \
+            -o cyclonedx-json=sbom-rpg-api.cdx.json
+
+      - name: Upload du SBOM en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-rpg-api
+          path: sbom-rpg-api.*.json
+
+      - name: Installation de Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Signature keyless de l'image (Sigstore)
+        run: |
+          cosign sign --yes \
+            ghcr.io/${{ github.repository_owner }}/rpg-api@${{ steps.build.outputs.digest }}
+
+      - name: Attachement du SBOM à l'image (attestation)
+        run: |
+          cosign attest --yes \
+            --predicate sbom-rpg-api.spdx.json \
+            --type spdxjson \
+            ghcr.io/${{ github.repository_owner }}/rpg-api@${{ steps.build.outputs.digest }}
+
+      - name: Vérification de la signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            ghcr.io/${{ github.repository_owner }}/rpg-api@${{ steps.build.outputs.digest }}
+
+  iac-scan-checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v4
+
+      - name: Scan Checkov des manifests Kubernetes
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: k8s/
+          framework: kubernetes
+          output_format: cli
+          soft_fail: true
