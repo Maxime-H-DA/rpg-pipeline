@@ -6,3 +6,5 @@ __pycache__/
 .pytest_cache/
 .venv/
 k8s/01-secret.yaml
+helm/**/charts/
+*.tgz

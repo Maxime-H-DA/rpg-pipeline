@@ -23,7 +23,7 @@ push (main)
  ├─► tests-api : pytest
  ├─► dast-api : OWASP ZAP sur l'API déjà en ligne (Render)
  ├─► supply-chain-api : SBOM (Syft) + signature de l'image (Cosign)
- └─► iac-scan-checkov : scan des manifests Kubernetes
+ └─► iac-scan-checkov : scan des manifests Kubernetes et du chart Helm
 ```
 
 Les 8 jobs tournent en parallèle à chaque push, sans dépendance entre eux. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
@@ -47,7 +47,7 @@ L'API Flask est analysée avec deux outils complémentaires — Bandit détecte 
 Chaque image poussée sur GitHub Container Registry génère un inventaire de ses dépendances (SBOM, format SPDX) et est signée en mode keyless via Sigstore — aucune clé privée à gérer, la signature s'appuie sur l'identité du workflow GitHub Actions et est publiée dans un registre de transparence public (Rekor).
 
 **Scan d'infrastructure avec Checkov**
-Les manifests Kubernetes sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations (UID trop bas, secrets en variables d'environnement, système de fichiers racine non protégé en lecture seule, absence de règle réseau). 7 ont été corrigées ; les 2 restantes sont documentées et acceptées comme contraintes propres à l'environnement de développement local (Kind).
+Les manifests Kubernetes sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations (UID trop bas, secrets en variables d'environnement, système de fichiers racine non protégé en lecture seule, absence de règle réseau). 7 ont été corrigées ; les 2 restantes sont documentées et acceptées comme contraintes propres à l'environnement de développement local (Kind). Le chart Helm équivalent est scanné de la même façon et produit un résultat identique.
 
 **Tests unitaires (pytest)**
 L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
@@ -65,9 +65,11 @@ docker build -t rpg-api -f rpg-api/Dockerfile .
 docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 ```
 
+L'API est alors accessible sur **http://localhost:5000**
+
 ### Kubernetes (local)
 
-L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root, avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets (identifiants admin, clé JWT) sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement ou codés en dur dans l'image.
+L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root, avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets (identifiants admin, clé JWT) sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement ou codés en dur dans l'image. Les 2 réplicas partagent un volume persistant (PVC) pour la base SQLite, évitant l'incohérence qu'aurait causée un stockage par pod isolé.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -85,6 +87,24 @@ L'API est alors accessible sur **http://localhost:5000**
 
 Note : avec les deux méthodes, les modifications faites en local ne sont pas synchronisées avec la version en ligne.
 
+### Helm (local)
+
+Le même déploiement existe aussi packagé en chart Helm (`helm/rpg-api/`), pour gérer la configuration via un seul fichier `values.yaml` plutôt qu'en éditant les manifests à la main.
+
+```bash
+kind create cluster --config k8s/kind-config.yaml
+docker build -t rpg-api:local -f rpg-api/Dockerfile .
+kind load docker-image rpg-api:local --name rpg-pipeline
+
+helm install rpg-api helm/rpg-api --namespace rpg-pipeline --create-namespace
+
+kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl rollout restart deployment/rpg-api -n rpg-pipeline
+kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
+```
+
+L'API est alors accessible sur **http://localhost:5000**
+
 ## Synchronisation avec le jeu
 
 Pour jouer avec les données en ligne plutôt que les données locales :
@@ -97,7 +117,7 @@ py play.py
 
 ## Outils utilisés
 
-- **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux
+- **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux
 - **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & tests** : Flask, SQLite, JWT, pytest
 
@@ -130,7 +150,7 @@ push (main)
  ├─► tests-api : pytest
  ├─► dast-api : OWASP ZAP against the live API (Render)
  ├─► supply-chain-api : SBOM (Syft) + image signing (Cosign)
- └─► iac-scan-checkov : Kubernetes manifest scanning
+ └─► └─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
 ```
 
 All 8 jobs run in parallel on every push, with no dependencies between them. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
@@ -154,7 +174,7 @@ On every push, ZAP tests the API directly in production the way an external atta
 Every image pushed to GitHub Container Registry gets a dependency inventory (SBOM, SPDX format) and is signed keyless via Sigstore — no private key to manage, the signature relies on the GitHub Actions workflow identity and is published to a public transparency log (Rekor).
 
 **Infrastructure scanning with Checkov**
-Kubernetes manifests are scanned on every push. The first scan flagged 9 misconfigurations (UID too low, secrets exposed as environment variables, writable filesystem, missing network policy). 7 were fixed; the remaining 2 are documented and accepted as constraints specific to the local development environment (Kind).
+Kubernetes manifests are scanned on every push. The first scan flagged 9 misconfigurations (UID too low, secrets exposed as environment variables, writable filesystem, missing network policy). 7 were fixed; the remaining 2 are documented and accepted as constraints specific to the local development environment (Kind).The equivalent Helm chart is scanned the same way and produces an identical result.
 
 **Unit tests (pytest)**
 The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading. Tests run on an isolated SQLite database to avoid polluting production data.
@@ -172,9 +192,11 @@ docker build -t rpg-api -f rpg-api/Dockerfile .
 docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 ```
 
+The API is then available at **http://localhost:5000**
+
 ### Kubernetes (local)
 
-The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root, with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets (admin credentials, JWT key) are injected as mounted files rather than environment variables or hardcoded values in the image.
+The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root, with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets (admin credentials, JWT key) are injected as mounted files rather than environment variables or hardcoded values in the image. The 2 replicas share a persistent volume (PVC) for the SQLite database, avoiding the inconsistency that per-pod isolated storage would have caused.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -192,6 +214,24 @@ The API is then available at **http://localhost:5000**
 
 Note: with either method, local changes are not synced with the live version.
 
+### Helm (local)
+
+The same deployment is also packaged as a Helm chart (`helm/rpg-api/`), to manage configuration through a single `values.yaml` file instead of hand-editing manifests.
+
+```bash
+kind create cluster --config k8s/kind-config.yaml
+docker build -t rpg-api:local -f rpg-api/Dockerfile .
+kind load docker-image rpg-api:local --name rpg-pipeline
+
+helm install rpg-api helm/rpg-api --namespace rpg-pipeline --create-namespace
+
+kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+kubectl rollout restart deployment/rpg-api -n rpg-pipeline
+kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
+```
+
+The API is then available at **http://localhost:5000**
+
 ## Syncing with the game
 
 To play with the live data instead of local data:
@@ -204,7 +244,7 @@ py play.py
 
 ## Tools used
 
-- **CI/CD & infrastructure**: GitHub Actions, Docker, Kubernetes (Kind), Alpine Linux
+- **CI/CD & infrastructure**: GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux
 - **Security**: Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & testing**: Flask, SQLite, JWT, pytest
 

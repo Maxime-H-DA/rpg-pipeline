@@ -56,7 +56,7 @@ def init_db():
     conn.commit()
 
     if not db_existe:
-        with open("monsters.csv", "r", encoding="utf-8") as f:
+        with open("monsters.csv", "r", encoding="utf-8-sig") as f:
             for ligne in f:
                 ligne = ligne.strip()
                 if not ligne:

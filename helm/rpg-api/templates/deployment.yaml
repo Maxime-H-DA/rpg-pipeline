@@ -2,14 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rpg-api
-  namespace: rpg-pipeline
+  namespace: {{ .Values.namespace }}
   labels:
     app: rpg-api
   annotations:
     checkov.io/skip1: "CKV_K8S_43=Dev local Kind : image chargee via kind load docker-image, pas de digest disponible. En prod (ghcr.io) l'image est epinglee par digest et signee via Cosign."
     checkov.io/skip2: "CKV_K8S_15=IfNotPresent requis pour kind load docker-image, l'image locale n'existe dans aucun registre a pull."
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: rpg-api
@@ -21,20 +21,20 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: {{ .Values.podSecurity.runAsUser }}
+        runAsGroup: {{ .Values.podSecurity.runAsGroup }}
+        fsGroup: {{ .Values.podSecurity.fsGroup }}
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: rpg-api
-          image: rpg-api:local
-          imagePullPolicy: IfNotPresent
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 5000
+            - containerPort: {{ .Values.containerPort }}
           env:
             - name: API_DB_PATH
-              value: /app/data/database.db
+              value: {{ .Values.dbPath }}
           volumeMounts:
             - name: secrets
               mountPath: /etc/secrets
@@ -43,26 +43,26 @@ spec:
               mountPath: /app/data
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
             limits:
-              cpu: "300m"
-              memory: "256Mi"
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
           readinessProbe:
             httpGet:
               path: /
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           livenessProbe:
             httpGet:
               path: /
-              port: 5000
-            initialDelaySeconds: 10
-            periodSeconds: 20
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
           securityContext:
             runAsNonRoot: true
-            runAsUser: 10001
+            runAsUser: {{ .Values.podSecurity.runAsUser }}
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
@@ -71,7 +71,7 @@ spec:
       volumes:
         - name: secrets
           secret:
-            secretName: rpg-api-secret
+            secretName: {{ .Values.secret.name }}
         - name: data
           persistentVolumeClaim:
             claimName: rpg-api-data
