@@ -47,10 +47,10 @@ L'API Flask est analysée avec deux outils complémentaires — Bandit détecte 
 Chaque image poussée sur GitHub Container Registry génère un inventaire de ses dépendances (SBOM, format SPDX) et est signée en mode keyless via Sigstore — aucune clé privée à gérer, la signature s'appuie sur l'identité du workflow GitHub Actions et est publiée dans un registre de transparence public (Rekor).
 
 **Scan d'infrastructure avec Checkov**
-Les manifests Kubernetes sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations (UID trop bas, secrets en variables d'environnement, système de fichiers racine non protégé en lecture seule, absence de règle réseau). 7 ont été corrigées ; les 2 restantes sont documentées et acceptées comme contraintes propres à l'environnement de développement local (Kind). Le chart Helm équivalent est scanné de la même façon et produit un résultat identique.
+Les manifests Kubernetes et le chart Helm sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations : UID trop bas (risque de collision avec un utilisateur hôte), secrets injectés en variables d'environnement au lieu de fichiers montés, système de fichiers du conteneur accessible en écriture, absence de politique réseau. 7 ont été corrigées dans les manifests et reproduites à l'identique dans le chart Helm ; les 2 restantes sont documentées et acceptées comme contraintes propres à Kind (pas de digest d'image disponible pour une image chargée localement, `imagePullPolicy` forcé à `IfNotPresent`).
 
 **Tests unitaires (pytest)**
-L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
+L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets depuis fichiers montés ou variables d'environnement. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
 
 ## L'API du bestiaire
 
@@ -69,7 +69,7 @@ L'API est alors accessible sur **http://localhost:5000**
 
 ### Kubernetes (local)
 
-L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root, avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets (identifiants admin, clé JWT) sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement ou codés en dur dans l'image. Les 2 réplicas partagent un volume persistant (PVC) pour la base SQLite, évitant l'incohérence qu'aurait causée un stockage par pod isolé.
+L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement. Les 2 réplicas partagent un volume persistant (PVC) pour la base SQLite — sans ça, chaque pod aurait sa propre base isolée et les données auraient été incohérentes selon le pod qui répondait.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -89,15 +89,13 @@ Note : avec les deux méthodes, les modifications faites en local ne sont pas sy
 
 ### Helm (local)
 
-Le même déploiement existe aussi packagé en chart Helm (`helm/rpg-api/`), pour gérer la configuration via un seul fichier `values.yaml` plutôt qu'en éditant les manifests à la main.
+Le même déploiement existe aussi packagé en chart Helm (`helm/rpg-api/`). Toutes les valeurs configurables (réplicas, ressources, UID, taille du volume...) sont centralisées dans `values.yaml` — changer l'environnement ne nécessite de modifier qu'un seul fichier, pas les manifests un par un. Le chart est scanné par Checkov en CI et produit le même résultat que les manifests bruts.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
 docker build -t rpg-api:local -f rpg-api/Dockerfile .
 kind load docker-image rpg-api:local --name rpg-pipeline
-
 helm install rpg-api helm/rpg-api --namespace rpg-pipeline --create-namespace
-
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl rollout restart deployment/rpg-api -n rpg-pipeline
 kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
@@ -150,7 +148,7 @@ push (main)
  ├─► tests-api : pytest
  ├─► dast-api : OWASP ZAP against the live API (Render)
  ├─► supply-chain-api : SBOM (Syft) + image signing (Cosign)
- └─► └─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
+ └─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
 ```
 
 All 8 jobs run in parallel on every push, with no dependencies between them. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
@@ -174,10 +172,10 @@ On every push, ZAP tests the API directly in production the way an external atta
 Every image pushed to GitHub Container Registry gets a dependency inventory (SBOM, SPDX format) and is signed keyless via Sigstore — no private key to manage, the signature relies on the GitHub Actions workflow identity and is published to a public transparency log (Rekor).
 
 **Infrastructure scanning with Checkov**
-Kubernetes manifests are scanned on every push. The first scan flagged 9 misconfigurations (UID too low, secrets exposed as environment variables, writable filesystem, missing network policy). 7 were fixed; the remaining 2 are documented and accepted as constraints specific to the local development environment (Kind).The equivalent Helm chart is scanned the same way and produces an identical result.
+Kubernetes manifests and the Helm chart are scanned on every push. The first scan flagged 9 misconfigurations: UID too low (risk of collision with a host user), secrets injected as environment variables instead of mounted files, writable container filesystem, missing network policy. 7 were fixed in the manifests and reproduced identically in the Helm chart; the remaining 2 are documented and accepted as constraints specific to Kind (no image digest available for a locally loaded image, `imagePullPolicy` forced to `IfNotPresent`).
 
 **Unit tests (pytest)**
-The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading. Tests run on an isolated SQLite database to avoid polluting production data.
+The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading from mounted files or environment variables. Tests run on an isolated SQLite database to avoid polluting production data.
 
 ## The Bestiary API
 
@@ -196,7 +194,7 @@ The API is then available at **http://localhost:5000**
 
 ### Kubernetes (local)
 
-The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root, with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets (admin credentials, JWT key) are injected as mounted files rather than environment variables or hardcoded values in the image. The 2 replicas share a persistent volume (PVC) for the SQLite database, avoiding the inconsistency that per-pod isolated storage would have caused.
+The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets are injected as mounted files rather than environment variables. The 2 replicas share a persistent volume (PVC) for the SQLite database — without it, each pod would have its own isolated database and data would have been inconsistent depending on which pod responded.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
@@ -216,15 +214,13 @@ Note: with either method, local changes are not synced with the live version.
 
 ### Helm (local)
 
-The same deployment is also packaged as a Helm chart (`helm/rpg-api/`), to manage configuration through a single `values.yaml` file instead of hand-editing manifests.
+The same deployment is also packaged as a Helm chart (`helm/rpg-api/`). All configurable values (replicas, resources, UID, volume size...) are centralized in `values.yaml` — switching environments only requires changing one file, not editing manifests one by one. The chart is scanned by Checkov in CI and produces the same result as the raw manifests.
 
 ```bash
 kind create cluster --config k8s/kind-config.yaml
 docker build -t rpg-api:local -f rpg-api/Dockerfile .
 kind load docker-image rpg-api:local --name rpg-pipeline
-
 helm install rpg-api helm/rpg-api --namespace rpg-pipeline --create-namespace
-
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl rollout restart deployment/rpg-api -n rpg-pipeline
 kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
