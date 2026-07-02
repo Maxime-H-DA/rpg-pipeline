@@ -56,7 +56,7 @@ L'API est couverte par 36 tests unitaires — authentification JWT, validation d
 
 Une API Flask déployée sur [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) qui expose les données des monstres du jeu. La lecture est libre, les modifications nécessitent une connexion avec identifiant et mot de passe.
 
-### Docker (local)
+### Docker
 
 Pour tester l'API en local sans impacter la version en ligne — utile pour tester des modifications de code avant de les déployer :
 
@@ -67,7 +67,7 @@ docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 
 L'API est alors accessible sur **http://localhost:5000**
 
-### Kubernetes (local)
+### Kubernetes
 
 L'API tourne aussi sur un cluster Kubernetes local avec Kind. Le conteneur s'exécute en non-root avec un système de fichiers en lecture seule, des ressources CPU et mémoire limitées, et des probes de santé qui surveillent que l'API répond. Les secrets sont injectés sous forme de fichiers montés plutôt qu'en variables d'environnement. Les 2 réplicas partagent un volume persistant (PVC) pour la base SQLite — sans ça, chaque pod aurait sa propre base isolée et les données auraient été incohérentes selon le pod qui répondait.
 
@@ -76,6 +76,7 @@ kind create cluster --config k8s/kind-config.yaml
 docker build -t rpg-api:local -f rpg-api/Dockerfile .
 kind load docker-image rpg-api:local --name rpg-pipeline
 kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/05-pvc.yaml
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/02-deployment.yaml
 kubectl apply -f k8s/03-service.yaml
@@ -87,7 +88,7 @@ L'API est alors accessible sur **http://localhost:5000**
 
 Note : avec les deux méthodes, les modifications faites en local ne sont pas synchronisées avec la version en ligne.
 
-### Helm (local)
+### Helm
 
 Le même déploiement existe aussi packagé en chart Helm (`helm/rpg-api/`). Toutes les valeurs configurables (réplicas, ressources, UID, taille du volume...) sont centralisées dans `values.yaml` — changer l'environnement ne nécessite de modifier qu'un seul fichier, pas les manifests un par un. Le chart est scanné par Checkov en CI et produit le même résultat que les manifests bruts.
 
@@ -181,7 +182,7 @@ The API is covered by 36 unit tests — JWT authentication, data validation, err
 
 A Flask API deployed at [rpg-pipeline.onrender.com](https://rpg-pipeline.onrender.com) that exposes the game's monster data. Reading is open, modifications require authentication with a username and password.
 
-### Docker (local)
+### Docker
 
 To test the API locally without impacting the live version — useful for testing code changes before deploying:
 
@@ -192,7 +193,7 @@ docker run -d -p 5000:5000 --env-file .env -v rpg-data:/app/data rpg-api
 
 The API is then available at **http://localhost:5000**
 
-### Kubernetes (local)
+### Kubernetes
 
 The API also runs on a local Kubernetes cluster with Kind. The container runs as non-root with a read-only filesystem, capped CPU and memory, and health probes that monitor whether the API responds. Secrets are injected as mounted files rather than environment variables. The 2 replicas share a persistent volume (PVC) for the SQLite database — without it, each pod would have its own isolated database and data would have been inconsistent depending on which pod responded.
 
@@ -201,6 +202,7 @@ kind create cluster --config k8s/kind-config.yaml
 docker build -t rpg-api:local -f rpg-api/Dockerfile .
 kind load docker-image rpg-api:local --name rpg-pipeline
 kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/05-pvc.yaml
 kubectl create secret generic rpg-api-secret --namespace rpg-pipeline --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/02-deployment.yaml
 kubectl apply -f k8s/03-service.yaml
@@ -212,7 +214,7 @@ The API is then available at **http://localhost:5000**
 
 Note: with either method, local changes are not synced with the live version.
 
-### Helm (local)
+### Helm
 
 The same deployment is also packaged as a Helm chart (`helm/rpg-api/`). All configurable values (replicas, resources, UID, volume size...) are centralized in `values.yaml` — switching environments only requires changing one file, not editing manifests one by one. The chart is scanned by Checkov in CI and produces the same result as the raw manifests.
 
