@@ -123,7 +123,7 @@ jobs:
           category: semgrep
 
       - name: Upload rapports SAST bruts (JSON)
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sast-reports
           path: |
@@ -208,7 +208,7 @@ jobs:
             -o cyclonedx-json=sbom-rpg-api.cdx.json
 
       - name: Upload du SBOM en artefact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-rpg-api
           path: sbom-rpg-api.*.json
