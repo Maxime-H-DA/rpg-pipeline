@@ -102,17 +102,15 @@ jobs:
 
       - name: Analyse Bandit (vulnérabilités Python)
         run: |
-          python -m venv .venv-bandit
-          .venv-bandit/bin/pip install -q "bandit[sarif]"
-          .venv-bandit/bin/bandit -r rpg-api/ -f sarif -o bandit-report.sarif || true
-          .venv-bandit/bin/bandit -r rpg-api/ -f json -o bandit-report.json || true
+          pipx install "bandit[sarif]"
+          bandit -r rpg-api/ -f sarif -o bandit-report.sarif || true
+          bandit -r rpg-api/ -f json -o bandit-report.json || true
 
       - name: Analyse Semgrep (SAST moderne)
         run: |
-          python -m venv .venv-semgrep
-          .venv-semgrep/bin/pip install -q semgrep
-          .venv-semgrep/bin/semgrep scan --config auto rpg-api/ --sarif --output semgrep-report.sarif || true
-          .venv-semgrep/bin/semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
+          pipx install semgrep
+          semgrep scan --config auto rpg-api/ --sarif --output semgrep-report.sarif || true
+          semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
 
       - name: Upload rapports SAST vers l'onglet Security
         uses: github/codeql-action/upload-sarif@v3
