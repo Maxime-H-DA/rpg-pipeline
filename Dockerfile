@@ -4,7 +4,7 @@ WORKDIR /app
 COPY rpg-source/ .
 RUN g++ -std=c++17 -Wall -o rpg_game main.cpp
 
-FROM alpine:3.19
+FROM alpine:3.24
 
 WORKDIR /app
 COPY --from=compilation /app/rpg_game .
