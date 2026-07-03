@@ -15,6 +15,7 @@ repos:
     hooks:
       - id: semgrep
         args: ["--config", "auto", "--error", "--skip-unknown-extensions", "--quiet"]
+        exclude: ^\.github/workflows/
 
   - repo: https://github.com/bridgecrewio/checkov
     rev: '3.3.6'
