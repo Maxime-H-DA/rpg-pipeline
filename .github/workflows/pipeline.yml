@@ -102,15 +102,13 @@ jobs:
 
       - name: Analyse Bandit (vulnérabilités Python)
         run: |
-          pipx install "bandit[sarif]"
-          bandit -r rpg-api/ -f sarif -o bandit-report.sarif || true
-          bandit -r rpg-api/ -f json -o bandit-report.json || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -f sarif -o bandit-report.sarif || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -f json -o bandit-report.json || true
 
       - name: Analyse Semgrep (SAST moderne)
         run: |
-          pipx install semgrep
-          semgrep scan --config auto rpg-api/ --sarif --output semgrep-report.sarif || true
-          semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
+          pipx run semgrep scan --config auto rpg-api/ --sarif --output semgrep-report.sarif || true
+          pipx run semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
 
       - name: Upload rapports SAST vers l'onglet Security
         uses: github/codeql-action/upload-sarif@v3
