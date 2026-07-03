@@ -4,18 +4,22 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   analyse-code:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
+          fetch-depth: 0
 
       - name: Détection de secrets dans le code
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -31,9 +35,12 @@ jobs:
 
   scan-jeu:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -41,17 +48,28 @@ jobs:
         run: docker build -t rpg-alterdune .
 
       - name: Scan de vulnérabilités du jeu
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: rpg-alterdune
           severity: HIGH,CRITICAL
           exit-code: 0
+          format: sarif
+          output: trivy-jeu.sarif
+
+      - name: Upload du rapport vers l'onglet Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-jeu.sarif
+          category: trivy-jeu
 
   scan-api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -59,30 +77,53 @@ jobs:
         run: docker build -t rpg-api -f rpg-api/Dockerfile .
 
       - name: Scan de vulnérabilités de l'API
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: rpg-api
           severity: HIGH,CRITICAL
           exit-code: 0
+          format: sarif
+          output: trivy-api.sarif
+
+      - name: Upload du rapport vers l'onglet Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-api.sarif
+          category: trivy-api
 
   sast-api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Analyse Bandit (vulnérabilités Python)
         run: |
-          pip install bandit
-          bandit -r rpg-api/ -f json -o bandit-report.json || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -ll -f sarif -o bandit-report.sarif || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -ll -f json -o bandit-report.json || true
 
       - name: Analyse Semgrep (SAST moderne)
         run: |
-          pip install semgrep
-          semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
+          pipx run semgrep scan --config auto rpg-api/ --sarif --output semgrep-report.sarif || true
+          pipx run semgrep scan --config auto rpg-api/ --json --output semgrep-report.json || true
 
-      - name: Upload rapports SAST
-        uses: actions/upload-artifact@v4
+      - name: Upload rapport Bandit vers l'onglet Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-report.sarif
+          category: bandit
+
+      - name: Upload rapport Semgrep vers l'onglet Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-report.sarif
+          category: semgrep
+
+      - name: Upload rapports SAST bruts (JSON)
+        uses: actions/upload-artifact@v6
         with:
           name: sast-reports
           path: |
@@ -93,12 +134,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Installation de Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
+          python-version: '3.11'
 
       - name: Installation des dépendances
         run: pip install -r rpg-api/requirements.txt
@@ -119,10 +160,11 @@ jobs:
 
       - name: OWASP ZAP sur l'API Render
         continue-on-error: true
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'https://rpg-pipeline.onrender.com'
           fail_action: false
+          artifact_name: 'zap-scan-results'
 
   supply-chain-api:
     runs-on: ubuntu-latest
@@ -132,7 +174,7 @@ jobs:
       id-token: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -166,7 +208,7 @@ jobs:
             -o cyclonedx-json=sbom-rpg-api.cdx.json
 
       - name: Upload du SBOM en artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sbom-rpg-api
           path: sbom-rpg-api.*.json
@@ -197,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Installation de Helm
         uses: azure/setup-helm@v4

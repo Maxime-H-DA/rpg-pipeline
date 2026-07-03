@@ -8,7 +8,7 @@ CSV_PATH = os.path.join(os.path.dirname(__file__), "rpg-source", "monsters.csv")
 print("Connexion a l'API en ligne...")
 
 try:
-    with urllib.request.urlopen(API_URL, timeout=10) as reponse:  # nosec B310 - API_URL est une constante codee en dur, pas une entree utilisateur
+    with urllib.request.urlopen(API_URL, timeout=10) as reponse:  # nosec B310 - API_URL est une constante codee en dur, pas une entree utilisateur  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
         monstres_api = json.loads(reponse.read().decode())
 
     monstres_locaux = []

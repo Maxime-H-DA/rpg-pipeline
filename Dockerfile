@@ -13,4 +13,7 @@ COPY --from=compilation /app/monsters.csv .
 
 RUN apk add --no-cache libstdc++
 
+RUN adduser -D -u 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["./rpg_game"]

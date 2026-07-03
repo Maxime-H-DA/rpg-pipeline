@@ -12,7 +12,7 @@ from app import app as flask_app
 from app import read_secret
 from app import get_db
 
-SECRET = "changeme"
+SECRET = "changeme"  # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secretp.py)
 
 @pytest.fixture(autouse=True)
 def secrets_de_test(monkeypatch):
@@ -24,7 +24,7 @@ def secrets_de_test(monkeypatch):
 def client():
     db_fd, db_path = tempfile.mkstemp()
     os.close(db_fd)
-    flask_app.config["TESTING"] = True
+    flask_app.config["TESTING"] = True  # nosemgrep: python.flask.security.audit.hardcoded-config.avoid_hardcoded_config_TESTING
     flask_app.config["DATABASE"] = db_path
 
     with flask_app.app_context():
@@ -51,7 +51,7 @@ def client():
 
 @pytest.fixture
 def token_valide():
-    return jwt.encode(
+    return jwt.encode( # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
         {"username": "admin", "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)},
         SECRET,
         algorithm="HS256",
@@ -60,7 +60,7 @@ def token_valide():
 
 @pytest.fixture
 def token_expire():
-    return jwt.encode(
+    return jwt.encode( # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
         {"username": "admin", "exp": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)},
         SECRET,
         algorithm="HS256",
