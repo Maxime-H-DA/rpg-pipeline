@@ -102,8 +102,8 @@ jobs:
 
       - name: Analyse Bandit (vulnérabilités Python)
         run: |
-          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -f sarif -o bandit-report.sarif || true
-          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -f json -o bandit-report.json || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -ll -f sarif -o bandit-report.sarif || true
+          pipx run --spec "bandit[sarif]" bandit -r rpg-api/ -ll -f json -o bandit-report.json || true
 
       - name: Analyse Semgrep (SAST moderne)
         run: |
