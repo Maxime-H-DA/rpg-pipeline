@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
           fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
       security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -69,7 +69,7 @@ jobs:
       security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -98,7 +98,7 @@ jobs:
       security-events: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Analyse Bandit (vulnérabilités Python)
         run: |
@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Installation de Python
         uses: actions/setup-python@v6
@@ -174,7 +174,7 @@ jobs:
       id-token: write
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -239,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Téléchargement du code source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Installation de Helm
         uses: azure/setup-helm@v4
