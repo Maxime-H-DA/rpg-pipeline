@@ -1,4 +1,4 @@
-FROM gcc:13 AS compilation
+FROM gcc:16 AS compilation
 
 WORKDIR /app
 COPY rpg-source/ .
