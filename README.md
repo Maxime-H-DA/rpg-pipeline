@@ -10,13 +10,13 @@ L'idée était de prendre un vrai projet et lui appliquer des pratiques qu'on re
 
 ## Avant même le push
 
-Des hooks pre-commit tournent en local à chaque commit — Gitleaks, Bandit et Checkov refont les mêmes vérifications qu'en CI mais avant que le code parte sur GitHub, en plus de quelques hooks d'hygiène (espaces en fin de ligne, fichiers volumineux, YAML valide).
+Des hooks pre-commit tournent en local à chaque commit — Gitleaks, Bandit, Semgrep et Checkov refont les mêmes vérifications qu'en CI mais avant que le code parte sur GitHub, en plus de quelques hooks d'hygiène (espaces en fin de ligne, fichiers volumineux, YAML valide).
 
-## Ce qui se passe à chaque push
+## Ce qui se passe à chaque push et à chaque pull request
 
 ```
-push (main)
- ├─► analyse-code : Cppcheck (code C++)
+push (main) / pull request → main
+ ├─► analyse-code : Gitleaks + Cppcheck (code C++)
  ├─► scan-jeu : Build Docker (jeu) + Trivy
  ├─► scan-api : Build Docker (API) + Trivy
  ├─► sast-api : Bandit + Semgrep
@@ -26,7 +26,7 @@ push (main)
  └─► iac-scan-checkov : scan des manifests Kubernetes et du chart Helm
 ```
 
-Les 8 jobs tournent en parallèle à chaque push, sans dépendance entre eux. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
+Les 8 jobs tournent en parallèle, sans dépendance entre eux, à chaque push **et** à chaque pull request vers `main` — les scans passent avant le merge, pas après. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
 
 **Analyse du code avec Cppcheck**
 Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation.
@@ -51,6 +51,14 @@ Les manifests Kubernetes et le chart Helm sont analysés à chaque push. Le prem
 
 **Tests unitaires (pytest)**
 L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets depuis fichiers montés ou variables d'environnement. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
+
+## Résultats centralisés
+
+Gitleaks, Bandit, Semgrep et Trivy publient tous leurs résultats dans l'onglet **Security → Code scanning** du repo, avec sévérité et ligne exacte — pas besoin de télécharger un rapport pour savoir ce qui a été trouvé. Les autres artefacts (SBOM, rapport ZAP complet, image de build Docker) restent téléchargeables depuis le run correspondant, puisqu'il ne s'agit pas d'alertes mais de documents de référence.
+
+## Dépendances tenues à jour automatiquement
+
+Dependabot surveille en continu les actions GitHub, les dépendances Python de l'API et les images Docker de base. Il ouvre une pull request à chaque nouvelle version disponible (avec un délai de 7 jours après la sortie, pour éviter une version tout juste publiée et pas encore éprouvée), qui passe par les mêmes 8 jobs avant de pouvoir être mergée.
 
 ## L'API du bestiaire
 
@@ -116,7 +124,7 @@ py play.py
 
 ## Outils utilisés
 
-- **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux
+- **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux, Dependabot
 - **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & tests** : Flask, SQLite, JWT, pytest
 
@@ -136,13 +144,13 @@ The idea was to take a real project and apply practices found in professional en
 
 ## Before the push even happens
 
-Pre-commit hooks run locally on every commit — Gitleaks, Bandit, and Checkov run the same checks as CI before the code reaches GitHub, plus a few hygiene hooks (trailing whitespace, large files, valid YAML).
+Pre-commit hooks run locally on every commit — Gitleaks, Bandit, Semgrep, and Checkov run the same checks as CI before the code reaches GitHub, plus a few hygiene hooks (trailing whitespace, large files, valid YAML).
 
-## What happens on every push
+## What happens on every push and pull request
 
 ```
-push (main)
- ├─► analyse-code : Cppcheck (C++ code)
+push (main) / pull request → main
+ ├─► analyse-code : Gitleaks + Cppcheck (C++ code)
  ├─► scan-jeu : Docker build (game) + Trivy
  ├─► scan-api : Docker build (API) + Trivy
  ├─► sast-api : Bandit + Semgrep
@@ -152,7 +160,7 @@ push (main)
  └─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
 ```
 
-All 8 jobs run in parallel on every push, with no dependencies between them. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
+All 8 jobs run in parallel, with no dependencies between them, on every push **and** every pull request targeting `main` — scans run before the merge, not after. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
 
 **Code analysis with Cppcheck**
 The C++ code is automatically scanned to detect bugs and issues before compilation even starts.
@@ -177,6 +185,14 @@ Kubernetes manifests and the Helm chart are scanned on every push. The first sca
 
 **Unit tests (pytest)**
 The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading from mounted files or environment variables. Tests run on an isolated SQLite database to avoid polluting production data.
+
+## Centralized results
+
+Gitleaks, Bandit, Semgrep, and Trivy all publish their findings to the repo's **Security → Code scanning** tab, with severity and exact line — no need to download a report to see what was found. Other artifacts (SBOM, full ZAP report, Docker build metadata) stay downloadable from the corresponding run, since they're reference documents rather than alerts.
+
+## Dependencies kept up to date automatically
+
+Dependabot continuously watches GitHub Actions, the API's Python dependencies, and the base Docker images. It opens a pull request for every new version available (with a 7-day cooldown after release, to avoid a version that's brand new and not yet battle-tested), which goes through the same 8 jobs before it can be merged.
 
 ## The Bestiary API
 
@@ -242,7 +258,7 @@ py play.py
 
 ## Tools used
 
-- **CI/CD & infrastructure**: GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux
+- **CI/CD & infrastructure**: GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux, Dependabot
 - **Security**: Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
 - **Backend & testing**: Flask, SQLite, JWT, pytest
 
