@@ -201,7 +201,7 @@ jobs:
           tags: ${{ steps.image.outputs.name }}:${{ github.sha }}
 
       - name: Installation de Syft
-        uses: anchore/sbom-action/download-syft@v0.17.9
+        uses: anchore/sbom-action/download-syft@v0.24.0
 
       - name: Génération du SBOM
         run: |
