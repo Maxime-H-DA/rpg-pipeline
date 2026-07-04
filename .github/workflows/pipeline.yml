@@ -195,7 +195,7 @@ jobs:
         run: echo "name=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/rpg-api" >> "$GITHUB_OUTPUT"
 
       - name: Connexion à GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
