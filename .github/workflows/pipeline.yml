@@ -11,6 +11,9 @@ on:
 jobs:
   analyse-code:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Téléchargement du code source
         uses: actions/checkout@v6
@@ -22,6 +25,13 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload rapport Gitleaks vers l'onglet Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: gitleaks
 
       - name: Installation de Cppcheck
         run: sudo apt-get install -y cppcheck
