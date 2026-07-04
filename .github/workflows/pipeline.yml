@@ -52,6 +52,7 @@ jobs:
         with:
           image-ref: rpg-alterdune
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: 0
           format: sarif
           output: trivy-jeu.sarif
@@ -81,6 +82,7 @@ jobs:
         with:
           image-ref: rpg-api
           severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: 0
           format: sarif
           output: trivy-api.sarif
