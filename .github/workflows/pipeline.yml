@@ -271,3 +271,17 @@ jobs:
           framework: helm
           output_format: cli
           soft_fail: true
+
+  kyverno-policy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Téléchargement du code source
+        uses: actions/checkout@v7
+
+      - name: Installation de la CLI Kyverno
+        uses: kyverno/action-install-cli@v0.2.0
+        with:
+          release: 'v1.18.1'
+
+      - name: Test des policies contre les manifests Kubernetes
+        run: kyverno apply policies/ --resource k8s/
