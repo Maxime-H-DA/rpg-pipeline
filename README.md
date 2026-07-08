@@ -23,10 +23,11 @@ push (main) / pull request → main
  ├─► tests-api : pytest
  ├─► dast-api : OWASP ZAP sur l'API déjà en ligne (Render)
  ├─► supply-chain-api : SBOM (Syft) + signature de l'image (Cosign)
- └─► iac-scan-checkov : scan des manifests Kubernetes et du chart Helm
+ ├─► iac-scan-checkov : scan des manifests Kubernetes et du chart Helm
+ └─► kyverno-policy-test : teste les policies Kyverno contre les manifests
 ```
 
-Les 8 jobs tournent en parallèle, sans dépendance entre eux, à chaque push **et** à chaque pull request vers `main` — les scans passent avant le merge, pas après. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
+Les 9 jobs tournent en parallèle, sans dépendance entre eux, à chaque push **et** à chaque pull request vers `main` — les scans passent avant le merge, pas après. Render déploie automatiquement de son côté ; `dast-api` se contente de réveiller puis scanner l'API déjà en ligne.
 
 **Analyse du code avec Cppcheck**
 Le code C++ est scanné automatiquement pour détecter des bugs et problèmes avant même la compilation.
@@ -48,6 +49,9 @@ Chaque image poussée sur GitHub Container Registry génère un inventaire de se
 
 **Scan d'infrastructure avec Checkov**
 Les manifests Kubernetes et le chart Helm sont analysés à chaque push. Le premier scan a remonté 9 mauvaises configurations : UID trop bas (risque de collision avec un utilisateur hôte), secrets injectés en variables d'environnement au lieu de fichiers montés, système de fichiers du conteneur accessible en écriture, absence de politique réseau. 7 ont été corrigées dans les manifests et reproduites à l'identique dans le chart Helm ; les 2 restantes sont documentées et acceptées comme contraintes propres à Kind (pas de digest d'image disponible pour une image chargée localement, `imagePullPolicy` forcé à `IfNotPresent`).
+
+**Test des policies Kyverno**
+Les 4 règles Kyverno (voir section Kubernetes) sont rejouées contre les manifests via la CLI officielle, sans avoir besoin d'un cluster actif. Si une future modification des manifests casse une règle, la PR échoue avant le merge — pas besoin d'avoir son cluster Kind lancé pour le découvrir.
 
 **Tests unitaires (pytest)**
 L'API est couverte par 36 tests unitaires — authentification JWT, validation des données, gestion des erreurs, headers de sécurité, lecture des secrets depuis fichiers montés ou variables d'environnement. Les tests tournent sur une base SQLite isolée pour ne pas polluer les données de production.
@@ -157,10 +161,11 @@ push (main) / pull request → main
  ├─► tests-api : pytest
  ├─► dast-api : OWASP ZAP against the live API (Render)
  ├─► supply-chain-api : SBOM (Syft) + image signing (Cosign)
- └─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
+ ├─► iac-scan-checkov : Kubernetes manifest and Helm chart scanning
+ └─► kyverno-policy-test : tests Kyverno policies against manifests
 ```
 
-All 8 jobs run in parallel, with no dependencies between them, on every push **and** every pull request targeting `main` — scans run before the merge, not after. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
+All 9 jobs run in parallel, with no dependencies between them, on every push **and** every pull request targeting `main` — scans run before the merge, not after. Render deploys automatically on its own; `dast-api` just wakes up and scans the API that's already live.
 
 **Code analysis with Cppcheck**
 The C++ code is automatically scanned to detect bugs and issues before compilation even starts.
@@ -182,6 +187,9 @@ Every image pushed to GitHub Container Registry gets a dependency inventory (SBO
 
 **Infrastructure scanning with Checkov**
 Kubernetes manifests and the Helm chart are scanned on every push. The first scan flagged 9 misconfigurations: UID too low (risk of collision with a host user), secrets injected as environment variables instead of mounted files, writable container filesystem, missing network policy. 7 were fixed in the manifests and reproduced identically in the Helm chart; the remaining 2 are documented and accepted as constraints specific to Kind (no image digest available for a locally loaded image, `imagePullPolicy` forced to `IfNotPresent`).
+
+**Kyverno policy testing**
+The 4 Kyverno rules (see Kubernetes section) are replayed against the manifests via the official CLI, no live cluster needed. If a future manifest change breaks a rule, the PR fails before merge — no need to have Kind running locally to catch it.
 
 **Unit tests (pytest)**
 The API is covered by 36 unit tests — JWT authentication, data validation, error handling, security headers, secret reading from mounted files or environment variables. Tests run on an isolated SQLite database to avoid polluting production data.
