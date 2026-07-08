@@ -64,6 +64,7 @@ spec:
             runAsNonRoot: true
             runAsUser: {{ .Values.podSecurity.runAsUser }}
             allowPrivilegeEscalation: false
+            privileged: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:

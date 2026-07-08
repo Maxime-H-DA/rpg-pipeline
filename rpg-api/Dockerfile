@@ -3,7 +3,6 @@ FROM python:3.14-slim
 ENV PYTHONUTF8=1
 
 WORKDIR /app
-
 COPY rpg-api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

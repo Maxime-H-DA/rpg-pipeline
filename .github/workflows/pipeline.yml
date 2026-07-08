@@ -270,6 +270,13 @@ jobs:
           directory: helm/
           framework: helm
           output_format: cli
+
+      - name: Scan Checkov du chart Helm
+        uses: bridgecrewio/checkov-action@v12.3108.0
+        with:
+          directory: helm/
+          framework: helm
+          output_format: cli
           soft_fail: true
 
   kyverno-policy-test:
