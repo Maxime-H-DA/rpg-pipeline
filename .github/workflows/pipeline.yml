@@ -257,7 +257,7 @@ jobs:
         uses: azure/setup-helm@v5
 
       - name: Scan Checkov des manifests Kubernetes
-        uses: bridgecrewio/checkov-action@v12.3108.0
+        uses: bridgecrewio/checkov-action@v12.3115.0
         with:
           directory: k8s/
           framework: kubernetes
@@ -265,14 +265,14 @@ jobs:
           soft_fail: true
 
       - name: Scan Checkov du chart Helm
-        uses: bridgecrewio/checkov-action@v12.3108.0
+        uses: bridgecrewio/checkov-action@v12.3115.0
         with:
           directory: helm/
           framework: helm
           output_format: cli
 
       - name: Scan Checkov du chart Helm
-        uses: bridgecrewio/checkov-action@v12.3108.0
+        uses: bridgecrewio/checkov-action@v12.3115.0
         with:
           directory: helm/
           framework: helm
