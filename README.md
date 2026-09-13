@@ -62,7 +62,7 @@ Gitleaks, Bandit, Semgrep et Trivy publient tous leurs résultats dans l'onglet 
 
 ## Dépendances tenues à jour automatiquement
 
-Dependabot surveille en continu les actions GitHub, les dépendances Python de l'API et les images Docker de base. Il ouvre une pull request à chaque nouvelle version disponible (avec un délai de 7 jours après la sortie, pour éviter une version tout juste publiée et pas encore éprouvée), qui passe par les mêmes 8 jobs avant de pouvoir être mergée.
+Dependabot surveille en continu les actions GitHub, les dépendances Python de l'API et les images Docker de base. Il ouvre une pull request à chaque nouvelle version disponible (avec un délai de 7 jours après la sortie, pour éviter une version tout juste publiée et pas encore éprouvée), qui passe par les mêmes 9 jobs avant de pouvoir être mergée.
 
 ## L'API du bestiaire
 
