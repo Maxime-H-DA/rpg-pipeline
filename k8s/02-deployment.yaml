@@ -17,8 +17,28 @@ spec:
     metadata:
       labels:
         app: rpg-api
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "rpg-api"
+        vault.hashicorp.com/secret-volume-path: "/etc/secrets"
+
+        vault.hashicorp.com/agent-inject-secret-API_SECRET_KEY: "secret/data/rpg-api"
+        vault.hashicorp.com/agent-inject-file-API_SECRET_KEY: "API_SECRET_KEY"
+        vault.hashicorp.com/agent-inject-template-API_SECRET_KEY: |
+          {{- with secret "secret/data/rpg-api" -}}{{ .Data.data.API_SECRET_KEY }}{{- end }}
+
+        vault.hashicorp.com/agent-inject-secret-ADMIN_USERNAME: "secret/data/rpg-api"
+        vault.hashicorp.com/agent-inject-file-ADMIN_USERNAME: "ADMIN_USERNAME"
+        vault.hashicorp.com/agent-inject-template-ADMIN_USERNAME: |
+          {{- with secret "secret/data/rpg-api" -}}{{ .Data.data.ADMIN_USERNAME }}{{- end }}
+
+        vault.hashicorp.com/agent-inject-secret-ADMIN_PASSWORD: "secret/data/rpg-api"
+        vault.hashicorp.com/agent-inject-file-ADMIN_PASSWORD: "ADMIN_PASSWORD"
+        vault.hashicorp.com/agent-inject-template-ADMIN_PASSWORD: |
+          {{- with secret "secret/data/rpg-api" -}}{{ .Data.data.ADMIN_PASSWORD }}{{- end }}
     spec:
-      automountServiceAccountToken: false
+      serviceAccountName: rpg-api
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -36,9 +56,6 @@ spec:
             - name: API_DB_PATH
               value: /app/data/database.db
           volumeMounts:
-            - name: secrets
-              mountPath: /etc/secrets
-              readOnly: true
             - name: data
               mountPath: /app/data
           resources:
@@ -70,9 +87,6 @@ spec:
               drop:
                 - ALL
       volumes:
-        - name: secrets
-          secret:
-            secretName: rpg-api-secret
         - name: data
           persistentVolumeClaim:
             claimName: rpg-api-data

@@ -1,0 +1,19 @@
+injector:
+  enabled: true
+  securityContext:
+    container:
+      runAsNonRoot: true
+      runAsUser: 100
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+
+server:
+  standalone:
+    enabled: true
+  securityContext:
+    container:
+      runAsNonRoot: true
+      runAsUser: 100
+      allowPrivilegeEscalation: false
