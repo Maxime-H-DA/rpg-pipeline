@@ -123,7 +123,7 @@ kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
 
 L'API est alors accessible sur **http://localhost:5000**
 
-## Gestion des secrets avec HashiCorp Vault
+### Gestion des secrets avec Vault
 
 Les identifiants applicatifs ne sont plus stockés dans un `Secret` Kubernetes, seulement encodé en base64 dans etcd et lisible en une commande : ils sont chiffrés dans Vault, et injectés au démarrage du pod par un sidecar. Chaque pod s'authentifie avec son propre ServiceAccount, reçoit un accès en lecture seule à durée limitée, sans jamais détenir de credential statique.
 
