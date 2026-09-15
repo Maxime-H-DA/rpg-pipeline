@@ -123,6 +123,62 @@ kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
 
 L'API est alors accessible sur **http://localhost:5000**
 
+## Gestion des secrets avec HashiCorp Vault
+
+Les identifiants applicatifs ne sont plus stockés dans un `Secret` Kubernetes, seulement encodé en base64 dans etcd et lisible en une commande : ils sont chiffrés dans Vault, et injectés au démarrage du pod par un sidecar. Chaque pod s'authentifie avec son propre ServiceAccount, reçoit un accès en lecture seule à durée limitée, sans jamais détenir de credential statique.
+
+```
+kind create cluster --config k8s/kind-config.yaml
+
+docker build -t rpg-api:local -f rpg-api/Dockerfile .
+kind load docker-image rpg-api:local --name rpg-pipeline
+
+kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/05-pvc.yaml
+kubectl apply -f k8s/06-serviceaccount.yaml
+
+helm repo add hashicorp https://helm.releases.hashicorp.com
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+
+helm install kyverno kyverno/kyverno --namespace kyverno --create-namespace
+kubectl wait --for condition=established --timeout=120s crd/clusterpolicies.kyverno.io
+kubectl apply -f policies/
+
+helm install vault hashicorp/vault --namespace vault --create-namespace -f vault/vault-values.yaml
+kubectl wait --for=jsonpath='{.status.phase}'=Running --timeout=120s pod/vault-0 -n vault
+
+$init = kubectl exec -n vault vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json | ConvertFrom-Json
+$keys = $init.unseal_keys_b64
+$token = $init.root_token
+
+kubectl exec -n vault vault-0 -- vault operator unseal $keys[0]
+kubectl exec -n vault vault-0 -- vault operator unseal $keys[1]
+kubectl exec -n vault vault-0 -- vault operator unseal $keys[2]
+kubectl exec -n vault vault-0 -- vault login $token
+
+kubectl exec -n vault vault-0 -- vault auth enable kubernetes
+kubectl exec -n vault vault-0 -- vault write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc:443"
+kubectl exec -n vault vault-0 -- vault secrets enable -path=secret kv-v2
+
+Get-Content vault/policies/rpg-api-policy.hcl -Raw | kubectl exec -i -n vault vault-0 -- vault policy write rpg-api -
+kubectl exec -n vault vault-0 -- vault write auth/kubernetes/role/rpg-api bound_service_account_names=rpg-api bound_service_account_namespaces=rpg-pipeline policies=rpg-api ttl=1h
+
+kubectl exec -n vault vault-0 -- mkdir -p /vault/audit
+kubectl exec -n vault vault-0 -- chmod u+x /vault/audit
+kubectl exec -n vault vault-0 -- vault audit enable file file_path=/vault/audit/audit.log
+
+.\vault\seed-secrets.ps1
+
+kubectl apply -f k8s/02-deployment.yaml
+kubectl apply -f k8s/03-service.yaml
+kubectl apply -f k8s/04-networkpolicy.yaml
+
+kubectl port-forward -n rpg-pipeline svc/rpg-api 5000:80
+```
+
+L'API est alors accessible sur **http://localhost:5000**
+
 ## Synchronisation avec le jeu
 
 Pour jouer avec les données en ligne plutôt que les données locales :
@@ -136,7 +192,7 @@ py play.py
 ## Outils utilisés
 
 - **CI/CD & infrastructure** : GitHub Actions, Docker, Kubernetes (Kind), Helm, Alpine Linux, Dependabot
-- **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Syft, Cosign
+- **Sécurité** : Gitleaks, Trivy, Bandit, Semgrep, OWASP ZAP, Cppcheck, Checkov, Kyverno, Syft, Cosign, HashiCorp Vault
 - **Backend & tests** : Flask, SQLite, JWT, pytest
 
 ## Projet source
